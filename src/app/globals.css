@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+/* Only Harborline tokens exist: no default Tailwind palette to drift back to. */
+@theme {
+  --color-*: initial;
+  --shadow-*: initial;
+}
+
+:root {
+  /* Design tokens, exactly as specified in the PRD (section 3). */
+  --bg: #faf5ec;
+  --surface: #ffffff;
+  --surface-alt: #f1e9d8;
+  --ink: #241c14;
+  --ink-soft: #5b4e3f;
+  --ink-faint: #8b7e6c;
+  --border: #e4d9c3;
+  --accent: #0e5c4c;
+  --accent-soft: #ddede7;
+  --accent-ink: #083a30;
+  --warm: #c1571f;
+  --success: #3f7d4a;
+  --warning: #b8863a;
+  --danger: #a63a2e;
+
+  /* Derived from --warm for tinted surfaces. --warm is ~4.2:1 on --bg, so small
+     warm-toned text uses --warm-ink (5.9:1 on --warm-soft) to stay AA. */
+  --warm-soft: #f8e9dc;
+  --warm-ink: #8f3d12;
+}
+
+@theme inline {
+  --color-white: #ffffff;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-warm: var(--warm);
+  --color-warm-soft: var(--warm-soft);
+  --color-warm-ink: var(--warm-ink);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SFMono-Regular", monospace;
+
+  /* Warm-tinted shadows only. Never pure black on this background. */
+  --shadow-soft: 0 1px 2px rgb(36 28 20 / 0.06);
+  --shadow-raised: 0 1px 2px rgb(36 28 20 / 0.05), 0 10px 24px -12px rgb(36 28 20 / 0.14);
+  --shadow-float: 0 2px 6px rgb(36 28 20 / 0.05), 0 28px 56px -24px rgb(36 28 20 / 0.22);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background-color: var(--accent-soft);
+    color: var(--accent-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  .rise {
+    animation: rise 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}

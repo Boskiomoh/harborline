@@ -1,0 +1,385 @@
+{
+  "metadata": {
+    "title": "Harborline",
+    "titleTemplate": "%s | Harborline",
+    "description": "Customer support that keeps its word. A support desk with response promises, clear ownership, and live ticket status."
+  },
+  "brand": {
+    "name": "Harborline",
+    "home": "Harborline home"
+  },
+  "nav": {
+    "primary": "Primary",
+    "skipToContent": "Skip to content",
+    "howItWorks": "How it works",
+    "signIn": "Sign in",
+    "tryDemo": "Try the demo",
+    "signOut": "Sign out"
+  },
+  "landing": {
+    "hero": {
+      "title": "Customer support that keeps its word.",
+      "body": "Every ticket gets a response promise, a clear owner, and a status your customer can check without asking.",
+      "primary": "Try the demo",
+      "secondary": "How it works"
+    },
+    "preview": {
+      "label": "Example ticket as it appears in the agent inbox",
+      "subject": "Parcel marked delivered but nothing arrived",
+      "customerName": "Maya Okafor",
+      "agentName": "Tomás Reyes",
+      "customerMessage": "Tracking says it was delivered yesterday at 2:14pm, but there's nothing at my door or in the mailroom. It's a birthday gift.",
+      "customerTime": "51m ago",
+      "note": "Checking the courier's GPS scan before I reply, so I can give her a real answer.",
+      "noteTime": "6m ago",
+      "draftLabel": "Reply to Maya",
+      "draft": "Hi Maya, I've opened a trace with the courier and asked for the delivery scan.",
+      "send": "Send reply",
+      "assignedTo": "Assigned to {name}"
+    },
+    "how": {
+      "title": "From first message to resolved",
+      "submit": {
+        "title": "Submit",
+        "body": "Customers describe the problem in four short steps and attach a photo or receipt.",
+        "fragment": "Step 2 of 4: Details"
+      },
+      "track": {
+        "title": "Track",
+        "body": "Replies and status changes land on the ticket as they happen. No refreshing, no chasing."
+      },
+      "resolve": {
+        "title": "Resolve",
+        "body": "The agent closes the loop, and the whole thread stays on record for next time."
+      }
+    },
+    "views": {
+      "title": "One ticket, two views",
+      "body": "Customers see the conversation. Agents also see internal notes, the owner, and the response clock. The database decides who sees what, not the interface.",
+      "customer": "What Maya sees",
+      "agent": "What the agent sees",
+      "customerMessage": "My card shows two charges of $86.40 for order HB-38310. I only placed one order.",
+      "agentReply": "Hi Maya, the first payment attempt timed out and was retried. I've voided the duplicate, so it should drop off your statement within 3 to 5 business days.",
+      "note": "Duplicate is a pending authorisation, not a settled charge. Voided in the payments console.",
+      "customerTime": "9 days ago",
+      "replyTime": "9 days ago"
+    },
+    "roles": {
+      "title": "Try it from all three sides",
+      "body": "Each demo account opens a fully stocked workspace, with nothing to set up.",
+      "customerTask": "Submit a ticket and follow the replies.",
+      "agentTask": "Work the inbox, reply, and leave internal notes.",
+      "adminTask": "Review response times and SLA breaches.",
+      "action": "Sign in as {name}"
+    },
+    "footer": {
+      "note": "Harborline is a fictional product, built as a portfolio demo."
+    }
+  },
+  "signIn": {
+    "metaTitle": "Sign in",
+    "title": "Sign in to Harborline",
+    "body": "Pick a demo account to explore the customer portal, the agent inbox, or admin analytics.",
+    "demoHeading": "Demo accounts",
+    "manualHeading": "Or sign in with email",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "submit": "Sign in",
+    "submitting": "Signing in",
+    "demoAction": "Continue as {name}",
+    "back": "Back to home",
+    "errors": {
+      "invalid": "That email and password don't match an account. Check both and try again.",
+      "generic": "Sign in didn't go through. Try again in a moment.",
+      "email": "Enter a valid email address.",
+      "password": "Enter your password."
+    }
+  },
+  "roles": {
+    "customer": "Customer",
+    "agent": "Agent",
+    "admin": "Admin"
+  },
+  "status": {
+    "new": "New",
+    "in_progress": "In progress",
+    "waiting_on_customer": "Waiting on customer",
+    "waiting_on_you": "Waiting on you",
+    "resolved": "Resolved"
+  },
+  "priority": {
+    "low": "Low",
+    "normal": "Normal",
+    "high": "High",
+    "urgent": "Urgent"
+  },
+  "category": {
+    "order_delivery": "Order & delivery",
+    "returns_refunds": "Returns & refunds",
+    "payments": "Payments",
+    "account": "Account",
+    "product_question": "Product question"
+  },
+  "sla": {
+    "remaining": "{time} left",
+    "overdue": "Overdue by {time}",
+    "met": "Replied in {time}",
+    "missed": "Replied in {time}, past target",
+    "ariaRunning": "First response due. {time} left of a {target} target.",
+    "ariaOverdue": "First response overdue by {time}. Target was {target}.",
+    "ariaMet": "First reply sent in {time}, within the {target} target.",
+    "ariaMissed": "First reply sent in {time}, past the {target} target.",
+    "loading": "Checking response time"
+  },
+  "duration": {
+    "seconds": "{s}s",
+    "minutesSeconds": "{m}m {s}s",
+    "minutes": "{m}m",
+    "hours": "{h}h",
+    "hoursMinutes": "{h}h {m}m",
+    "days": "{d}d",
+    "daysHours": "{d}d {h}h"
+  },
+  "thread": {
+    "internalNote": "Internal note",
+    "hiddenFromCustomer": "Hidden from the customer",
+    "you": "You",
+    "attachments": "Attachments",
+    "download": "Open {name}",
+    "live": "Live updates on",
+    "connecting": "Connecting to live updates",
+    "offline": "Live updates paused. Reconnecting."
+  },
+  "timeline": {
+    "opened": "{name} opened the ticket",
+    "changed": "{name} set the status to <status></status>",
+    "changedSystem": "Status changed to <status></status>"
+  },
+  "app": {
+    "nav": {
+      "label": "Main",
+      "myTickets": "My tickets",
+      "newTicket": "New ticket",
+      "inbox": "Inbox",
+      "analytics": "Analytics",
+      "openMenu": "Open menu",
+      "closeMenu": "Close menu",
+      "collapse": "Collapse sidebar",
+      "expand": "Expand sidebar"
+    }
+  },
+  "states": {
+    "errorTitle": "This page didn't load",
+    "errorBody": "Something went wrong while loading. Try again, and if it keeps happening, sign out and back in.",
+    "retry": "Try again",
+    "notFoundTitle": "Ticket not found",
+    "notFoundBody": "It may belong to another account, or the link is out of date.",
+    "backToTickets": "Back to tickets",
+    "backToInbox": "Back to inbox"
+  },
+  "portal": {
+    "list": {
+      "metaTitle": "My tickets",
+      "title": "My tickets",
+      "newTicket": "New ticket",
+      "tabsLabel": "Filter tickets",
+      "open": "Open",
+      "resolved": "Resolved",
+      "updated": "Updated <time></time>",
+      "empty": {
+        "title": "No tickets yet",
+        "body": "If something goes wrong with an order, open a ticket and follow every reply here.",
+        "action": "Open a ticket"
+      },
+      "emptyOpen": {
+        "title": "You're all caught up",
+        "body": "No open tickets right now. Resolved conversations stay on record in the Resolved tab."
+      },
+      "emptyResolved": {
+        "title": "Nothing resolved yet",
+        "body": "When a ticket is closed, it moves here with the full conversation."
+      }
+    },
+    "new": {
+      "metaTitle": "New ticket",
+      "title": "Open a ticket",
+      "progressLabel": "Progress",
+      "stepOf": "Step {current} of {total}",
+      "steps": {
+        "category": "Topic",
+        "details": "Details",
+        "attachments": "Attachments",
+        "review": "Review"
+      },
+      "category": {
+        "title": "What do you need help with?",
+        "body": "Pick the closest match. An agent can change it later."
+      },
+      "categoryHints": {
+        "order_delivery": "Tracking, late or missing parcels, address changes",
+        "returns_refunds": "Exchanges, return labels, refund status",
+        "payments": "Charges, promo codes, gift cards",
+        "account": "Signing in, email changes, saved details",
+        "product_question": "Sizing, materials, warranty"
+      },
+      "details": {
+        "title": "Tell us what happened",
+        "subjectLabel": "Subject",
+        "subjectHint": "A short summary, like: Parcel marked delivered but not received",
+        "descriptionLabel": "What happened?",
+        "descriptionHint": "Include dates, what you expected, and anything you've already tried.",
+        "orderLabel": "Order number (optional)",
+        "orderHint": "Starts with HB. It's in your confirmation email."
+      },
+      "attachments": {
+        "title": "Add photos or receipts",
+        "body": "Optional. Up to 3 files, 10 MB each: PNG, JPG, WEBP, GIF, PDF or TXT.",
+        "choose": "Choose files",
+        "drop": "or drop them here",
+        "remove": "Remove {name}",
+        "tooLarge": "{name} is larger than 10 MB.",
+        "wrongType": "{name} isn't a supported file type.",
+        "tooMany": "You can attach up to 3 files."
+      },
+      "review": {
+        "title": "Check and send",
+        "body": "An agent will reply in this ticket. You'll see every update on the ticket page.",
+        "topic": "Topic",
+        "subject": "Subject",
+        "description": "Description",
+        "order": "Order number",
+        "files": "Attachments",
+        "none": "None",
+        "edit": "Edit {section}"
+      },
+      "back": "Back",
+      "next": "Continue",
+      "submit": "Send ticket",
+      "submitting": "Sending",
+      "uploading": "Uploading files",
+      "errors": {
+        "category": "Choose a topic to continue.",
+        "subjectShort": "Add a subject of at least 3 characters.",
+        "subjectLong": "Keep the subject under 160 characters.",
+        "descriptionShort": "Add a few more details, at least 10 characters.",
+        "descriptionLong": "Keep the description under 10,000 characters.",
+        "order": "Order numbers are 40 characters or fewer.",
+        "generic": "Your ticket didn't send. Check your connection and try again."
+      }
+    },
+    "ticket": {
+      "back": "My tickets",
+      "metaTitle": "Ticket #{id}",
+      "opened": "Opened <time></time>",
+      "order": "Order {ref}",
+      "created": "Ticket sent. Replies will appear here, and the status updates as we work on it.",
+      "uploadFailed": "Your ticket was sent, but some files didn't upload. You can mention them in a reply.",
+      "waiting": "We're waiting on your reply to keep this moving.",
+      "replyLabel": "Your reply",
+      "send": "Send reply",
+      "sending": "Sending",
+      "reopenHint": "Replying reopens this ticket.",
+      "errors": {
+        "empty": "Write a message before sending.",
+        "generic": "Your reply didn't send. Try again."
+      }
+    }
+  },
+  "inbox": {
+    "metaTitle": "Inbox",
+    "title": "Inbox",
+    "searchLabel": "Search tickets",
+    "searchHint": "Subject, customer, ticket or order number",
+    "filtersLabel": "Filter and sort",
+    "status": "Status",
+    "priority": "Priority",
+    "assignee": "Assignee",
+    "sort": "Sort",
+    "statusOpen": "All open",
+    "statusAll": "All statuses",
+    "priorityAny": "Any priority",
+    "assigneeAnyone": "Anyone",
+    "assigneeMe": "Me",
+    "assigneeNone": "Unassigned",
+    "sortUrgency": "Most urgent",
+    "sortUpdated": "Recently updated",
+    "sortOldest": "Oldest first",
+    "clear": "Clear",
+    "count": "{count, plural, one {# ticket} other {# tickets}}",
+    "newReply": "New reply",
+    "newTicket": "New",
+    "unassigned": "Unassigned",
+    "empty": {
+      "title": "No tickets match these filters",
+      "body": "Try another status, or clear the filters to see everything.",
+      "action": "Clear filters"
+    },
+    "select": {
+      "title": "Pick a ticket",
+      "body": "Choose a ticket to read the thread and reply. New customer replies show up here live."
+    },
+    "detail": {
+      "back": "Inbox",
+      "metaTitle": "Ticket #{id}",
+      "customer": "Customer",
+      "opened": "Opened <time></time>",
+      "order": "Order {ref}",
+      "statusLabel": "Status",
+      "priorityLabel": "Priority",
+      "assigneeLabel": "Assignee",
+      "assignToMe": "Assign to me",
+      "saveError": "That change didn't save. Try again."
+    },
+    "composer": {
+      "modeLabel": "Message type",
+      "reply": "Reply",
+      "note": "Internal note",
+      "replyLabel": "Reply to {name}",
+      "noteLabel": "Note for the team",
+      "noteHint": "Only agents and admins see internal notes.",
+      "thenSet": "Then set status",
+      "keepStatus": "Keep as is",
+      "send": "Send reply",
+      "addNote": "Add note",
+      "sending": "Sending",
+      "canned": "Canned responses",
+      "cannedSearch": "Search canned responses",
+      "cannedEmpty": "No canned responses match.",
+      "cannedBy": "by {name}",
+      "shortcut": "Ctrl + Enter to send",
+      "errors": {
+        "empty": "Write a message before sending.",
+        "generic": "That didn't send. Try again."
+      }
+    }
+  },
+  "analytics": {
+    "metaTitle": "Analytics",
+    "title": "Analytics",
+    "body": "Tickets opened in the last 30 days, across every agent.",
+    "avgFirstResponse": "Average first response",
+    "avgFirstResponseHint": "Across {count, plural, one {# ticket} other {# tickets}} with a reply",
+    "breaches": "SLA breaches",
+    "breachesHint": "{late} replied late, {overdue} still waiting past target",
+    "statusTitle": "Tickets by status",
+    "statusHint": "Status of every ticket at the end of each day",
+    "categoryTitle": "Tickets by category",
+    "categoryHint": "Opened in the last 30 days, split by current state",
+    "targetsTitle": "Response targets",
+    "targetsPriority": "Priority",
+    "targetsTarget": "First response target",
+    "targetsAverage": "Average first response",
+    "targetsBreaches": "Breaches",
+    "open": "Open",
+    "resolved": "Resolved",
+    "noReplies": "No replies yet",
+    "viewTable": "View as table",
+    "legend": "Legend",
+    "day": "Day",
+    "categoryColumn": "Category",
+    "total": "Total",
+    "statusChartLabel": "Stacked area chart of ticket statuses for each of the last 30 days. Full values are in the table below the chart.",
+    "categoryChartLabel": "Bar chart of open and resolved tickets per category. Full values are in the table below the chart.",
+    "empty": "No tickets were opened in this period."
+  }
+}
