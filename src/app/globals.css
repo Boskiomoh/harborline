@@ -100,6 +100,45 @@
   }
 }
 
+/* Overlays: a confirm dialog and toasts settle in quickly (state feedback, not choreography). */
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Streaming AI text: a thin caret that marks where the next words land. */
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   html {
     scroll-behavior: smooth;
@@ -108,4 +147,30 @@
   .rise {
     animation: rise 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
+
+  .dialog-surface[open] {
+    animation: dialog-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .dialog-surface[open]::backdrop {
+    animation: backdrop-in 180ms ease-out;
+  }
+
+  .toast-enter {
+    animation: toast-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .stream-caret::after {
+    animation: caret-blink 1s steps(1) infinite;
+  }
+}
+
+.stream-caret::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background-color: var(--accent);
 }

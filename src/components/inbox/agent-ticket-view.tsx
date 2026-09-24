@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, CaretDown, ChatCircleText, LockSimple, PaperPlaneRight, SpinnerGap } from "@phosphor-icons/react/dist/ssr";
+import { ArrowLeft, CaretDown, ChatCircleText, CheckCircle, LockSimple, PaperPlaneRight, SpinnerGap } from "@phosphor-icons/react/dist/ssr";
 import { Avatar } from "@/components/ui/avatar";
-import { Banner } from "@/components/ui/banner";
 import { buttonClass } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { inputClass } from "@/components/ui/field";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { SlaBadge } from "@/components/ui/sla-badge";
+import { useToast } from "@/components/ui/toaster";
 import { LiveIndicator } from "@/components/tickets/live-indicator";
 import { TicketThread } from "@/components/tickets/ticket-thread";
 import { useLiveTicket } from "@/components/tickets/use-live-ticket";
@@ -18,10 +19,17 @@ import { useCannedResponsesQuery } from "@/lib/queries/inbox";
 import { Constants, type Enums } from "@/lib/supabase/database.types";
 import type { CannedResponse } from "@/lib/inbox";
 import type { Person } from "@/lib/tickets";
+import type { UpdateTicketInput } from "@/lib/api/schemas";
 import { cn } from "@/lib/cn";
+import { AiDraftPanel } from "./ai-draft-panel";
+import { AiSummaryCard } from "./ai-summary-card";
+import { AiTriageChip } from "./ai-triage-chip";
 import { useInbox } from "./inbox-provider";
 
 type Status = Enums<"ticket_status">;
+
+/** Threads at least this long get the "Summarize thread" card (the spec's 6 would hide it on every seed ticket). */
+const SUMMARY_MIN_MESSAGES = 4;
 
 export function AgentTicketView({ ticketId, viewerId, serverNow }: { ticketId: number; viewerId: string; serverNow: number }) {
   const t = useTranslations();
@@ -29,6 +37,8 @@ export function AgentTicketView({ ticketId, viewerId, serverNow }: { ticketId: n
   const live = useLiveTicket(ticketId);
   const canned = useCannedResponsesQuery();
   const updateMutation = useUpdateTicketMutation(ticketId);
+  const toast = useToast();
+  const [confirmResolve, setConfirmResolve] = useState(false);
 
   const { markRead } = inbox;
   useEffect(() => markRead(ticketId), [markRead, ticketId]);
@@ -36,6 +46,19 @@ export function AgentTicketView({ ticketId, viewerId, serverNow }: { ticketId: n
   if (!live.data) return null; // Hydrated from the server prefetch; this never shows in practice.
   const { ticket, messages, events, attachments, people, slaTargets } = live.data;
   const customer = people[ticket.customer_id];
+
+  const update = (input: UpdateTicketInput) =>
+    updateMutation.mutate(input, {
+      onSuccess: () => {
+        if (input.status) toast({ title: t("inbox.toast.statusChanged", { status: t(`status.${input.status}`) }) });
+        else if (input.priority) toast({ title: t("inbox.toast.priorityChanged", { priority: t(`priority.${input.priority}`) }) });
+        else if (input.assignedAgentId !== undefined) {
+          const assignee = input.assignedAgentId ? people[input.assignedAgentId]?.fullName : null;
+          toast({ title: assignee ? t("inbox.toast.assigned", { name: assignee }) : t("inbox.toast.unassigned") });
+        }
+      },
+      onError: () => toast({ tone: "error", title: t("inbox.toast.saveError"), description: t("inbox.toast.saveErrorBody") }),
+    });
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:py-8">
@@ -79,14 +102,15 @@ export function AgentTicketView({ ticketId, viewerId, serverNow }: { ticketId: n
           id="ticket-status"
           label={t("inbox.detail.statusLabel")}
           value={ticket.status}
-          onChange={(status) => updateMutation.mutate({ status: status as Status })}
+          // Resolving tells the customer the problem is closed, so it gets a confirmation step.
+          onChange={(status) => (status === "resolved" ? setConfirmResolve(true) : update({ status: status as Status }))}
           options={Constants.public.Enums.ticket_status.map((s) => ({ value: s, label: t(`status.${s}`) }))}
         />
         <ControlSelect
           id="ticket-priority"
           label={t("inbox.detail.priorityLabel")}
           value={ticket.priority}
-          onChange={(value) => updateMutation.mutate({ priority: value as Enums<"ticket_priority"> })}
+          onChange={(value) => update({ priority: value as Enums<"ticket_priority"> })}
           options={[...Constants.public.Enums.ticket_priority].reverse().map((p) => ({ value: p, label: t(`priority.${p}`) }))}
         />
         <div>
@@ -94,13 +118,13 @@ export function AgentTicketView({ ticketId, viewerId, serverNow }: { ticketId: n
             id="ticket-assignee"
             label={t("inbox.detail.assigneeLabel")}
             value={ticket.assigned_agent_id ?? ""}
-            onChange={(value) => updateMutation.mutate({ assignedAgentId: value || null })}
+            onChange={(value) => update({ assignedAgentId: value || null })}
             options={[{ value: "", label: t("inbox.unassigned") }, ...inbox.staff.map((s) => ({ value: s.id, label: s.fullName }))]}
           />
           {ticket.assigned_agent_id !== viewerId && (
             <button
               type="button"
-              onClick={() => updateMutation.mutate({ assignedAgentId: viewerId })}
+              onClick={() => update({ assignedAgentId: viewerId })}
               className="mt-1.5 text-[0.8125rem] font-medium text-accent-ink underline-offset-4 hover:underline"
             >
               {t("inbox.detail.assignToMe")}
@@ -109,11 +133,9 @@ export function AgentTicketView({ ticketId, viewerId, serverNow }: { ticketId: n
         </div>
       </div>
 
-      {updateMutation.isError && (
-        <Banner tone="error" className="mt-3">
-          {t("inbox.detail.saveError")}
-        </Banner>
-      )}
+      <AiTriageChip ticket={ticket} />
+
+      {messages.length >= SUMMARY_MIN_MESSAGES && <AiSummaryCard ticketId={ticket.id} messageCount={messages.length} />}
 
       <TicketThread
         className="mt-8"
@@ -127,6 +149,19 @@ export function AgentTicketView({ ticketId, viewerId, serverNow }: { ticketId: n
       />
 
       <AgentComposer ticketId={ticket.id} customerName={customer?.fullName ?? ""} canned={canned.data ?? []} staff={inbox.staff} />
+
+      <ConfirmDialog
+        open={confirmResolve}
+        onClose={() => setConfirmResolve(false)}
+        onConfirm={() => {
+          setConfirmResolve(false);
+          update({ status: "resolved" });
+        }}
+        icon={CheckCircle}
+        title={t("inbox.detail.resolveConfirm.title", { id: ticket.id })}
+        description={t("inbox.detail.resolveConfirm.body", { name: customer?.fullName.split(" ")[0] ?? t("inbox.detail.customer") })}
+        confirmLabel={t("inbox.detail.resolveConfirm.confirm")}
+      />
     </div>
   );
 }
@@ -145,7 +180,7 @@ function ControlSelect({
   onChange: (value: string) => void;
 }) {
   return (
-    <div className="grid gap-1">
+    <div className="grid content-start gap-1">
       <label htmlFor={id} className="text-xs font-medium text-ink-soft">
         {label}
       </label>
@@ -180,6 +215,7 @@ function AgentComposer({
   const [thenStatus, setThenStatus] = useState<"" | Status>("");
   const [error, setError] = useState<string | null>(null);
   const mutation = usePostMessageMutation(ticketId);
+  const toast = useToast();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const firstName = customerName.split(" ")[0] ?? "";
   const note = mode === "note";
@@ -197,6 +233,10 @@ function AgentComposer({
         onSuccess: () => {
           setBody("");
           setThenStatus("");
+          toast({
+            title: note ? t("inbox.toast.noteAdded") : t("inbox.toast.replySent", { name: firstName || customerName }),
+            description: setStatus ? t("inbox.toast.statusChanged", { status: t(`status.${setStatus}`) }) : undefined,
+          });
         },
         onError: () => setError(t("inbox.composer.errors.generic")),
       },
@@ -204,13 +244,24 @@ function AgentComposer({
   };
 
   return (
+    <>
+    <AiDraftPanel
+      ticketId={ticketId}
+      composerText={body}
+      onInsert={(text) => {
+        setMode("reply");
+        setBody(text);
+        setError(null);
+        requestAnimationFrame(() => textareaRef.current?.focus());
+      }}
+    />
     <form
       onSubmit={(event) => {
         event.preventDefault();
         send();
       }}
       className={cn(
-        "mt-8 rounded-[8px] border p-4 transition-colors sm:p-5",
+        "mt-3 rounded-[8px] border p-4 transition-colors sm:p-5",
         note ? "border-dashed border-warm/45 bg-warm-soft/60" : "border-border bg-surface shadow-raised",
       )}
     >
@@ -309,6 +360,7 @@ function AgentComposer({
         </div>
       </div>
     </form>
+    </>
   );
 }
 

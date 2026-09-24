@@ -14,7 +14,13 @@
     "howItWorks": "How it works",
     "signIn": "Sign in",
     "tryDemo": "Try the demo",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "signOutConfirm": {
+      "title": "Sign out of Harborline?",
+      "body": "You'll need to sign in again to get back to your tickets.",
+      "confirm": "Sign out",
+      "pending": "Signing out"
+    }
   },
   "landing": {
     "hero": {
@@ -282,7 +288,9 @@
       "errors": {
         "empty": "Write a message before sending.",
         "generic": "Your reply didn't send. Try again."
-      }
+      },
+      "sent": "Reply sent",
+      "sentBody": "We'll reply here, and you'll see the status change as we work on it."
     }
   },
   "inbox": {
@@ -328,7 +336,12 @@
       "priorityLabel": "Priority",
       "assigneeLabel": "Assignee",
       "assignToMe": "Assign to me",
-      "saveError": "That change didn't save. Try again."
+      "saveError": "That change didn't save. Try again.",
+      "resolveConfirm": {
+        "title": "Resolve ticket #{id}?",
+        "body": "{name} will see this ticket as resolved. If they reply, it reopens automatically.",
+        "confirm": "Mark resolved"
+      }
     },
     "composer": {
       "modeLabel": "Message type",
@@ -350,6 +363,67 @@
       "errors": {
         "empty": "Write a message before sending.",
         "generic": "That didn't send. Try again."
+      }
+    },
+    "toast": {
+      "replySent": "Reply sent to {name}",
+      "noteAdded": "Internal note added",
+      "statusChanged": "Status set to {status}",
+      "priorityChanged": "Priority set to {priority}",
+      "assigned": "Assigned to {name}",
+      "unassigned": "Ticket unassigned",
+      "saveError": "That change didn't save",
+      "saveErrorBody": "Check your connection and try again."
+    },
+    "ai": {
+      "label": "AI assist",
+      "draft": {
+        "title": "Draft with AI",
+        "intro": "Writes a first draft from similar solved tickets and your team's saved replies. Nothing sends until you press Send.",
+        "start": "Draft reply",
+        "writing": "Writing a draft",
+        "stop": "Stop",
+        "again": "Draft again",
+        "discard": "Discard",
+        "insert": "Insert into reply",
+        "editLabel": "AI draft (you can edit it here or after inserting)",
+        "basedOn": "Based on",
+        "sourceTicket": "Ticket #{id}",
+        "sourceMatch": "{percent}% match",
+        "noSources": "No close matches in past tickets or saved replies, so this draft only uses the thread.",
+        "empty": "The model returned an empty draft. Try again.",
+        "inserted": "Draft added to your reply",
+        "insertedBody": "Read it over and edit before you send.",
+        "replaceTitle": "Replace your reply?",
+        "replaceBody": "The reply box already has text in it. Inserting the draft replaces what you wrote.",
+        "replaceConfirm": "Replace with draft",
+        "redraftTitle": "Discard your edits?",
+        "redraftBody": "You changed this draft. Drafting again replaces it with a new one.",
+        "redraftConfirm": "Draft again"
+      },
+      "triage": {
+        "suggestion": "Looks like <b>{category}</b>, <b>{priority}</b>",
+        "lowConfidence": "Low confidence",
+        "accept": "Accept",
+        "dismiss": "Dismiss",
+        "accepted": "Category and priority updated",
+        "loading": "Checking category and priority"
+      },
+      "summary": {
+        "title": "Summary",
+        "intro": "{count} messages. Get the gist before you read the whole thread.",
+        "start": "Summarize thread",
+        "again": "Summarize again",
+        "loading": "Summarizing the thread",
+        "internal": "Includes internal notes",
+        "show": "Show summary",
+        "hide": "Hide summary"
+      },
+      "errors": {
+        "unavailable": "AI assist isn't available right now. You can still reply as usual.",
+        "rateLimited": "You've used today's AI assist allowance. It resets at midnight UTC.",
+        "generic": "That didn't work. Try again.",
+        "retry": "Try again"
       }
     }
   },
@@ -381,5 +455,12 @@
     "statusChartLabel": "Stacked area chart of ticket statuses for each of the last 30 days. Full values are in the table below the chart.",
     "categoryChartLabel": "Bar chart of open and resolved tickets per category. Full values are in the table below the chart.",
     "empty": "No tickets were opened in this period."
+  },
+  "dialog": {
+    "cancel": "Cancel"
+  },
+  "toast": {
+    "region": "Notifications",
+    "close": "Dismiss notification"
   }
 }

@@ -21,6 +21,11 @@ export async function POST(request: Request, ctx: RouteContext<"/api/tickets/[id
   if ("response" in body) return body.response;
   const { messageId, storagePath, fileName, mimeType, sizeBytes } = body.data;
 
+  // A row may only claim a file inside its own ticket's folder: the storage select policy lets
+  // anyone who can see the row read the file, so a foreign path would unlock someone else's
+  // upload. The database enforces the same rule (ticket_attachments_path_in_ticket).
+  if (!storagePath.startsWith(`${parsedId.id}/`)) return apiError(403, { error: "forbidden" });
+
   const supabase = await createClient();
   const { error } = await supabase.from("ticket_attachments").insert({
     ticket_id: parsedId.id,
@@ -31,7 +36,9 @@ export async function POST(request: Request, ctx: RouteContext<"/api/tickets/[id
     size_bytes: sizeBytes,
     uploaded_by: auth.viewer.id,
   });
-  if (error) return apiError(error.code === "42501" ? 403 : 500, { error: error.code === "42501" ? "forbidden" : "generic" });
+  // 42501 RLS, 23514 path check, 23505 path already claimed: all "not yours to attach".
+  const forbidden = error && ["42501", "23514", "23505"].includes(error.code);
+  if (error) return apiError(forbidden ? 403 : 500, { error: forbidden ? "forbidden" : "generic" });
 
   return NextResponse.json({ ok: true }, { status: 201 });
 }

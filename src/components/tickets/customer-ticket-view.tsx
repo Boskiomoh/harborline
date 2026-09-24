@@ -9,6 +9,7 @@ import { buttonClass } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/field";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { StatusPill } from "@/components/ui/status-pill";
+import { useToast } from "@/components/ui/toaster";
 import { usePostMessageMutation } from "@/lib/queries/tickets";
 import { LiveIndicator } from "./live-indicator";
 import { TicketThread } from "./ticket-thread";
@@ -84,6 +85,7 @@ function CustomerReply({ ticketId, resolved }: { ticketId: number; resolved: boo
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
   const mutation = usePostMessageMutation(ticketId);
+  const toast = useToast();
 
   const send = () => {
     if (!body.trim()) {
@@ -94,7 +96,10 @@ function CustomerReply({ ticketId, resolved }: { ticketId: number; resolved: boo
     mutation.mutate(
       { body, internal: false },
       {
-        onSuccess: () => setBody(""),
+        onSuccess: () => {
+          setBody("");
+          toast({ title: t("sent"), description: t("sentBody") });
+        },
         onError: () => setError(t("errors.generic")),
       },
     );

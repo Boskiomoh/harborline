@@ -10,4 +10,5 @@ export const qk = {
   cannedResponses: () => ["cannedResponses"] as const,
   slaPolicies: () => ["slaPolicies"] as const,
   analytics: (days: number) => ["analytics", days] as const,
+  aiTriage: (ticketId: number) => ["ai", "triage", ticketId] as const,
 };

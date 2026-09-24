@@ -30,7 +30,7 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/tickets/[i
 
   const body = await parseBody(request, updateTicketInputSchema);
   if ("response" in body) return body.response;
-  const { status, priority, assignedAgentId } = body.data;
+  const { status, priority, category, assignedAgentId } = body.data;
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -38,6 +38,7 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/tickets/[i
     .update({
       ...(status !== undefined && { status }),
       ...(priority !== undefined && { priority }),
+      ...(category !== undefined && { category }),
       ...(assignedAgentId !== undefined && { assigned_agent_id: assignedAgentId }),
     })
     .eq("id", parsedId.id)

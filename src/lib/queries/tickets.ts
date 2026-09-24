@@ -12,6 +12,7 @@ import {
   ticketDetailSchema,
   ticketMessageSchema,
   updateTicketInputSchema,
+  type AiTriageResponse,
   type CreateTicketInput,
   type PostMessageInput,
   type RecordAttachmentInput,
@@ -124,6 +125,7 @@ export function useUpdateTicketMutation(ticketId: number) {
       const patch: Partial<TicketCore> = {
         ...(input.status !== undefined && { status: input.status }),
         ...(input.priority !== undefined && { priority: input.priority }),
+        ...(input.category !== undefined && { category: input.category }),
         ...(input.assignedAgentId !== undefined && { assigned_agent_id: input.assignedAgentId }),
       };
       patchTicketCore(queryClient, ticketId, patch);
@@ -134,6 +136,14 @@ export function useUpdateTicketMutation(ticketId: number) {
     onError: (_err, _input, context) => {
       if (context?.previousDetail) queryClient.setQueryData(qk.ticket(ticketId), context.previousDetail);
       if (context?.previousInbox) queryClient.setQueryData(qk.inbox(), context.previousInbox);
+    },
+    // Category/priority set by hand (or by accepting a suggestion): the server has stamped
+    // `triaged_at`, so retire any AI triage suggestion without asking the server again.
+    onSuccess: (_result, input) => {
+      if (input.category !== undefined || input.priority !== undefined) {
+        const skipped: AiTriageResponse = { status: "skipped", reason: "already_triaged" };
+        queryClient.setQueryData(qk.aiTriage(ticketId), skipped);
+      }
     },
   });
 }

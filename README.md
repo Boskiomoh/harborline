@@ -23,6 +23,17 @@ Sign in with any of the three quick-login buttons on the sign-in page, or use th
 - **Server-rendered by default** — every page prefetches its data on the server and hydrates a TanStack Query cache, so there's no client-side fetch on first paint.
 - **Row-level security throughout** — every table and storage bucket is RLS-enforced, tested directly against the API (not just hidden in the UI): a customer gets a 403 from staff-only routes and a plain 404 (never a permission leak) for another customer's ticket.
 
+## Security
+
+The demo logins above are public, so the app assumes every visitor may try to break it for the next one:
+
+- **Demo accounts are locked at the database.** Their password, email and phone can't be changed and MFA can't be enrolled, so nobody can lock hirers out.
+- **The demo resets nightly** (04:00 UTC, `pg_cron`): tickets, replies, canned responses, SLA targets and display names return to the seed.
+- **Attachments are bound to their ticket.** An attachment record can only point at a file inside its own ticket's storage folder, enforced by a database check as well as the API.
+- **Secrets stay server-side.** Only the publishable Supabase key reaches the browser; AI keys live in route handlers; the `embed` Edge Function only accepts calls carrying a shared secret kept in Supabase Vault (or a staff session).
+- **Safe redirects, security headers.** Post-sign-in redirects must stay on this site; every response carries a Content-Security-Policy, `X-Frame-Options: DENY`, `nosniff`, a strict referrer policy and a locked-down permissions policy.
+- **AI usage is capped** per visitor (account + IP) and per account each day, so one visitor can't spend the shared allowance.
+
 ## Tech stack
 
 - [Next.js 16](https://nextjs.org) (App Router, Turbopack) + React 19 + TypeScript
@@ -48,11 +59,12 @@ npm install
 npm run dev
 ```
 
-Requires a `.env.local` with:
+Copy `.env.example` to `.env.local` and fill it in:
 
-```
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+```bash
+cp .env.example .env.local
 ```
 
-Apply the migrations in `supabase/migrations/` to a Supabase project, then open [http://localhost:3000](http://localhost:3000).
+Tests: `npm test` (the API access suite expects the app on port 3100: `npx next dev -p 3100`).
+
+Apply the migrations in `supabase/migrations/` to a Supabase project, deploy `supabase/functions/embed`, then open [http://localhost:3000](http://localhost:3000). Run `npm run backfill:knowledge` once to embed the seed data's canned responses and resolved tickets.

@@ -49,6 +49,36 @@ export type Database = {
           },
         ]
       }
+      knowledge_chunks: {
+        Row: {
+          category: Database["public"]["Enums"]["ticket_category"] | null
+          content: string
+          created_at: string
+          embedding: string
+          id: number
+          source_id: number
+          source_type: string
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["ticket_category"] | null
+          content: string
+          created_at?: string
+          embedding: string
+          id?: never
+          source_id: number
+          source_type: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["ticket_category"] | null
+          content?: string
+          created_at?: string
+          embedding?: string
+          id?: never
+          source_id?: number
+          source_type?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -246,6 +276,7 @@ export type Database = {
           resolved_at: string | null
           status: Database["public"]["Enums"]["ticket_status"]
           subject: string
+          triaged_at: string | null
           updated_at: string
         }
         Insert: {
@@ -260,6 +291,7 @@ export type Database = {
           resolved_at?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
           subject: string
+          triaged_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -274,6 +306,7 @@ export type Database = {
           resolved_at?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
           subject?: string
+          triaged_at?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -301,6 +334,24 @@ export type Database = {
       admin_analytics: {
         Args: { p_days?: number }
         Returns: Json
+      }
+      match_knowledge_chunks: {
+        Args: {
+          match_category?: Database["public"]["Enums"]["ticket_category"]
+          match_count?: number
+          min_similarity?: number
+          query_embedding: string
+        }
+        Returns: {
+          canned_title: string
+          category: Database["public"]["Enums"]["ticket_category"]
+          content: string
+          id: number
+          similarity: number
+          source_id: number
+          source_type: string
+          ticket_id: number
+        }[]
       }
     }
     Enums: {

@@ -69,7 +69,9 @@ These were explicit user answers to `AskUserQuestion` prompts, not assumptions:
 
 **RLS:** enabled on every table plus `storage.objects`. Customers never see `is_internal_note = true` rows. Verified directly against the live API (not just hidden in the UI) — see §8.
 
-**pg_cron:** job `harborline-demo-rebase` runs `private.rebase_demo_clock()` nightly at 04:00 UTC.
+**pg_cron:** job `harborline-demo-reset` runs `private.reset_demo()` nightly at 04:00 UTC: restores the demo display names, then `reseed_demo()` (the full fixture). It replaced the old `harborline-demo-rebase` job in `20260924100000_security_hardening.sql`, because the demo logins are public and a timestamp rebase alone never undid a visitor's changes.
+
+**Demo account lock:** `private.demo_accounts` lists the seeded users; a trigger on `auth.users` silently keeps their password, email and phone, and one on `auth.mfa_factors` refuses MFA enrolment, so no visitor can lock the next one out. To change a demo password on purpose, remove the row, change it, re-insert.
 
 ---
 
@@ -85,7 +87,7 @@ Password for all three real demo logins: **`harborline-demo-2026`**
 
 Seed-only (no quick-login button, real but unremarkable passwords): jonah.whitfield@harborline.app (agent), ines.carvalho@example.com, marcus.bell@example.com, hana.sato@example.com, grace.adeyemi@example.com, oliver.brandt@example.com, leah.morrison@example.com (all customers).
 
-**Seed data:** 22 tickets (#1001–1022) across every status/priority, ~60 messages, 6 internal notes, 6 canned responses. **Note:** a couple of extra tickets (#1023, #1024) were created during QA/testing and are still in the database — run `select private.reseed_demo();` (via the Supabase MCP or SQL editor) before final delivery to reset to the clean 22-ticket fixture.
+**Seed data:** 22 tickets (#1001–1022) across every status/priority, ~60 messages, 6 internal notes, 6 canned responses. `select private.reseed_demo();` resets to this clean fixture at any time (via the Supabase MCP or SQL editor) — last run 2026-09-23 after the AI Assist build/test session (§11d), so the project is currently on the clean 22-ticket fixture, not #1023/#1024.
 
 ---
 
@@ -184,6 +186,9 @@ Tokens exactly per PRD §3, plus two derived tokens the PRD didn't specify:
 /api/tickets/[id]              GET detail / PATCH update (staff)
 /api/tickets/[id]/messages     POST reply or note
 /api/tickets/[id]/attachments  POST record uploaded-file metadata
+/api/tickets/[id]/ai/draft     POST streamed draft reply (staff, §11)
+/api/tickets/[id]/ai/triage    POST suggested category/priority (staff, §11)
+/api/tickets/[id]/ai/summary   POST thread summary (staff, §11)
 /api/inbox                     GET (staff)
 /api/staff                     GET (staff)
 /api/canned-responses          GET (staff)
@@ -208,7 +213,7 @@ Tokens exactly per PRD §3, plus two derived tokens the PRD didn't specify:
 
 ## 9. Not yet done / known gaps
 
-1. **Test data cleanup:** run `select private.reseed_demo();` to remove the QA-created tickets (#1023, #1024) and reset to the clean 22-ticket fixture. Also 2–3 small test files are sitting in the `ticket-attachments` Storage bucket from RLS testing — remove via the Storage dashboard (SQL can't delete Storage objects).
+1. **Test data cleanup:** `select private.reseed_demo();` was run 2026-09-23 (post AI-Assist build) and the project is on the clean 22-ticket fixture. Re-run it before any future delivery if more QA tickets accumulate. 2–3 small test files may still be sitting in the `ticket-attachments` Storage bucket from earlier RLS testing — remove via the Storage dashboard if that matters (SQL can't delete Storage objects).
 2. **Lighthouse LCP** is over the 2.5s target on signed-in routes (~3.5–3.8s simulated), traced to ~0.5–0.7s per-query latency from this dev machine to the Supabase project's region — **not** something the TanStack Query work fixes (that was about avoiding *repeat* requests, not first-load latency). Expected to improve once deployed to Vercel in the same region as Supabase. The landing page itself is fast (~0.3s unthrottled LCP). CLS is 0 everywhere (fixed earlier via the font's `display: "optional"`).
 3. **Stretch items not built:** dark mode toggle, canned-response management UI (add/edit own snippets), a second language beyond the i18n-ready English-only setup.
 4. **Leaked-password-protection** is off in Supabase Auth settings — flip on in the dashboard if this ever needs to look production-hardened.
@@ -217,7 +222,59 @@ Tokens exactly per PRD §3, plus two derived tokens the PRD didn't specify:
 
 ---
 
-## 10. Working conventions established this session
+## 11. AI Assist (built 2026-09-23, per `docs/AI-ASSIST.md`)
+
+Three agent-facing features, all staff-only (`requireApiRole(["agent", "admin"])`), all inside `/inbox`. Customers never see or trigger any of it. Full spec, workflow, and the "why nothing is trained" explanation live in `docs/AI-ASSIST.md`; this section is the as-built delta.
+
+- **Draft with AI** (`ai-draft-panel.tsx`) — streams a suggested reply built from the ticket's public thread plus the nearest canned responses and resolved-ticket replies (RAG via `knowledge_chunks`, §11a). Lists its sources as chips. Inserting over existing composer text asks for confirmation first (`ConfirmDialog`, tone `danger`); nothing ever sends without the agent's own click on the existing Send button.
+- **Suggested category/priority** (`ai-triage-chip.tsx`) — one Groq call, made once per ticket per session, only on `status = 'new'` tickets, only in the ticket detail (not the list, to stay well inside the free-tier rate limit). Accept goes through the same `PATCH /api/tickets/[id]` as a manual change. A new `tickets.triaged_at` column (stamped by a trigger whenever category/priority changes with a signed-in `auth.uid()`) is what makes the chip never reappear once a human — or Accept — has already set it; seeding and the nightly clock rebase run with no `auth.uid()`, so they never stamp it.
+- **Summarize thread** (`ai-summary-card.tsx`) — shown on tickets with 4+ messages (the spec says "more than 6"; lowered so it's demoable on the seed data — see `docs/AI-ASSIST.md` §7.N). Internal notes are included in the summary only for staff viewers, enforced explicitly in `src/lib/ai/thread.ts` rather than assumed from the route guard.
+
+### 11a. Retrieval (RAG, not training)
+
+- `public.knowledge_chunks` (migration `20260923192536`) — `source_type` (`canned_response` | `resolved_ticket`), `source_id`, `category`, `content`, `embedding vector(384)`, unique on `(source_type, source_id)` so re-embedding is an upsert. RLS: staff `select` only, no `insert`/`update`/`delete` policy for any client role — every write goes through the `embed` Edge Function running as the service role. `public.match_knowledge_chunks()` (SECURITY INVOKER) does the cosine-similarity search, so a customer calling it gets an empty set rather than an error that would confirm the table exists.
+- `supabase/functions/embed` — Deno Edge Function, `Supabase.ai.Session("gte-small")`, two modes: `{ text }` → a query embedding (staff JWT required), `{ index: {...} }` → embeds one canned response or one qualifying ticket message and upserts it (requires the Vault secret `harborline_embed_secret` in `x-embed-secret`, which `private.request_embedding` sends, or a staff JWT, which the backfill script sends; it re-derives eligibility itself from the service-role read, so a caller can at most trigger an idempotent re-index of a row that already belongs in the table — it can never inject content, and an internal note can never become a chunk). Deployed with `verify_jwt: false` because the database triggers call it with no user JWT.
+- Migration `20260923192732` wires the triggers: a staff reply landing on an already-resolved ticket, a ticket flipping to `resolved`, and any canned-response insert/update/delete, all via `pg_net` (async, fire-and-forget, only sent if the transaction commits — an embedding failure can never block a reply or a status change). `TRUNCATE` on `ticket_messages`/`canned_responses` (i.e. `private.reseed_demo()`) drops the matching chunks inline; confirmed live that reseeding self-heals `knowledge_chunks` back to a clean 19-row state (6 canned + 13 resolved-ticket messages) with no backfill run needed, because the seed function inserts messages after the ticket already has its target status, so the insert-time trigger catches it.
+- `scripts/backfill-knowledge.ts` — one-off/idempotent, signs in as the agent demo account, calls the same Edge Function per missing `(source_type, source_id)`. `npm run backfill:knowledge`.
+- Retrieval similarity floor is `0.78` (`src/lib/ai/retrieve.ts`), calibrated against the live seed data: gte-small puts almost any two English support messages at ~0.70–0.72, genuinely related sources land at ~0.79–0.85.
+
+### 11b. Model layer
+
+- `src/lib/ai/groq.ts` / `gemini.ts` — same `ChatProvider` surface (`chat()` JSON mode, `streamChat()`), so `src/lib/ai/assist.ts` falls back Groq → Gemini on any failure, and a JSON reply that fails Zod validation counts as a failure (the next provider is tried rather than a caller ever seeing a value outside the real enum). Model: `openai/gpt-oss-120b` on Groq (`GROQ_MODEL` to override) — Llama 3.3 70B isn't offered on this account's free tier; gpt-oss-120b supports strict JSON-schema output and answers in under a second. Gemini fallback is wired but **no `GEMINI_API_KEY` is set** (user chose not to provide one); the app runs on Groq alone and degrades to the calm "unavailable" state if Groq fails, per spec.
+- `src/lib/ai/ratelimit.ts` — Upstash REST, two `INCR`s per request per UTC day: per visitor, i.e. account + client IP (`AI_DAILY_LIMIT`, default 30), and per account across IPs (`AI_ACCOUNT_DAILY_LIMIT`, default 300), because the demo staff logins are shared by every hirer. No Upstash vars → no-op. Upstash error (unreachable, bad credentials, database full) → fails open, logs once per process. Verified live: a forced `AI_DAILY_LIMIT=1` run showed the third call return 429 with the inline "You've used today's AI assist allowance" message and no crash.
+- Prompts (`src/lib/ai/prompts.ts`) explicitly tell the draft model the reference material is *other tickets'* history, not this ticket's — an earlier version, without that line, would sometimes narrate a saved reply's action ("I've emailed you a label") as already having happened on the current ticket. Fixed by stating the last-speaker situation (agent waiting on customer vs. customer waiting on a reply) directly in the prompt.
+
+### 11c. UI additions beyond the AI panels
+
+Per user request, added while building this: a confirmation-dialog system (`src/components/ui/confirm-dialog.tsx`, native `<dialog>`, no focus-trap library), a toast system (`src/components/ui/toaster.tsx`, top-right, errors linger longer), and wired both into existing flows that previously acted with no assurance step or feedback: sign-out now confirms first (`sign-out-button.tsx`), resolving a ticket confirms first (it tells the customer the problem is closed), and every reply/note/status/assignment/priority change and AI action now toasts a result. `buttonClass` gained a `danger` variant (white on `--danger`, 6.1:1) for destructive confirms.
+
+### 11d. Verified live (Playwright + direct SQL, matching §8's standard)
+
+- Draft, triage, and summary all tested end-to-end as the agent demo account on real tickets; customer and signed-out requests to all three `/api/tickets/[id]/ai/*` routes confirmed 403/401.
+- `knowledge_chunks` confirmed unreadable and unwritable via the Supabase client as both the customer and agent demo accounts (only the service role writes); confirmed zero internal-note content ever appears in a chunk, checked directly against the live table.
+- Triage evaluated against 10 real seed tickets: category matched the human-assigned category 10/10; priority matched 6/10, every miss one level off.
+- All 19 automated tests pass (`npm test` — `tests/ai-thread.test.ts`, `tests/ai-ratelimit.test.ts`, `tests/ai-access.test.ts`), plus `tsc --noEmit`, `eslint .`, and `next build` all clean.
+- Unavailable state (`GROQ_API_KEY`/`GEMINI_API_KEY` both unset) confirmed live: inbox renders normally, both the triage chip and draft panel show the calm "AI assist isn't available right now" note, no crash.
+
+### 11e. Files
+
+```
+supabase/functions/embed/index.ts
+supabase/migrations/20260923192536_knowledge_chunks.sql
+supabase/migrations/20260923192732_knowledge_chunks_trigger.sql
+scripts/backfill-knowledge.ts
+src/lib/ai/{groq,gemini,assist,retrieve,ratelimit,prompts,thread,route}.ts
+src/app/api/tickets/[id]/ai/{draft,triage,summary}/route.ts
+src/lib/queries/ai.ts
+src/components/inbox/{ai-draft-panel,ai-triage-chip,ai-summary-card,ai-shared}.tsx
+src/components/ui/{confirm-dialog,toaster}.tsx
+tests/{helpers,ai-thread.test,ai-ratelimit.test,ai-access.test}.ts
+vitest.config.ts
+```
+
+---
+
+## 12. Working conventions established this session
 
 - User wants to be **asked, not guessed at**, for anything genuinely ambiguous (domain choices, architecture trade-offs) — multiple rounds of `AskUserQuestion` were used and are the source of §3's decisions.
 - User corrects imprecise UI implementations directly and expects the fix to match their exact framing (e.g. "the pill itself is the gauge, not a bar next to it").

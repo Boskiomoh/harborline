@@ -172,28 +172,74 @@ export const updateTicketInputSchema = z
   .object({
     status: ticketStatusSchema.optional(),
     priority: ticketPrioritySchema.optional(),
+    category: ticketCategorySchema.optional(),
     assignedAgentId: z.uuid().nullable().optional(),
   })
-  .refine((v) => v.status !== undefined || v.priority !== undefined || v.assignedAgentId !== undefined, {
-    message: "At least one of status, priority or assignedAgentId is required",
-  });
+  .refine(
+    (v) => v.status !== undefined || v.priority !== undefined || v.category !== undefined || v.assignedAgentId !== undefined,
+    { message: "At least one of status, priority, category or assignedAgentId is required" },
+  );
 export type UpdateTicketInput = z.infer<typeof updateTicketInputSchema>;
 
 export const recordAttachmentInputSchema = z.object({
   messageId: z.number().int().nullable(),
-  storagePath: z.string().min(1),
+  // `<ticketId>/<uuid>-<name>`; the route and a database check also bind it to this ticket.
+  storagePath: z.string().min(1).max(400).regex(/^\d+\/[\w.-]+$/),
   fileName: z.string().min(1).max(255),
   mimeType: z.string().nullable(),
   sizeBytes: z.number().int().nullable(),
 });
 export type RecordAttachmentInput = z.infer<typeof recordAttachmentInputSchema>;
 
+// ---- AI Assist (docs/AI-ASSIST.md) ------------------------------------------
+
+/** A retrieved chunk the draft was built from, shown to the agent as a source chip. */
+export const aiSourceSchema = z.object({
+  id: z.number().int(),
+  kind: z.enum(["canned_response", "resolved_ticket"]),
+  sourceId: z.number().int(),
+  ticketId: z.number().int().nullable(),
+  title: z.string().nullable(),
+  similarity: z.number(),
+});
+export type AiSource = z.infer<typeof aiSourceSchema>;
+
+/**
+ * The draft route streams `text/plain`: this object as a single JSON line first, then a newline,
+ * then the draft text as it's generated. Only the leading line is schema-checked; the rest is prose.
+ */
+export const aiDraftResponseSchema = z.object({
+  sources: z.array(aiSourceSchema),
+  provider: z.enum(["groq", "gemini"]),
+});
+export type AiDraftResponse = z.infer<typeof aiDraftResponseSchema>;
+
+export const aiTriageResponseSchema = z.discriminatedUnion("status", [
+  z.object({
+    status: z.literal("suggestion"),
+    category: ticketCategorySchema,
+    priority: ticketPrioritySchema,
+    confidence: z.number().min(0).max(1),
+  }),
+  // No suggestion: the ticket is past "new", or someone already set category/priority by hand.
+  // `dismissed` is client-only: the agent waved the suggestion away for this session.
+  z.object({ status: z.literal("skipped"), reason: z.enum(["not_new", "already_triaged", "dismissed"]) }),
+]);
+export type AiTriageResponse = z.infer<typeof aiTriageResponseSchema>;
+
+export const aiSummaryResponseSchema = z.object({
+  summary: z.string().min(1),
+  messageCount: z.number().int(),
+  includesInternalNotes: z.boolean(),
+});
+export type AiSummaryResponse = z.infer<typeof aiSummaryResponseSchema>;
+
 // ---- Error envelope --------------------------------------------------------
 
 export const okSchema = z.object({ ok: z.boolean() });
 
 export const apiErrorSchema = z.object({
-  error: z.enum(["invalid", "unauthorized", "forbidden", "not_found", "generic"]),
+  error: z.enum(["invalid", "unauthorized", "forbidden", "not_found", "rate_limited", "unavailable", "generic"]),
   message: z.string().optional(),
   issues: z.array(z.object({ path: z.string(), message: z.string() })).optional(),
 });

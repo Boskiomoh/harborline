@@ -1,6 +1,6 @@
 import { cn } from "@/lib/cn";
 
-type Variant = "primary" | "secondary" | "ghost";
+type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg";
 
 const base =
@@ -12,6 +12,8 @@ const variants: Record<Variant, string> = {
   primary: "bg-accent text-white shadow-soft hover:bg-accent-ink",
   secondary: "border border-border bg-surface text-ink hover:border-ink-faint hover:bg-surface-alt/50",
   ghost: "text-ink-soft hover:bg-surface-alt hover:text-ink",
+  // Destructive confirmations only (white on --danger is 6.1:1).
+  danger: "bg-danger text-white shadow-soft hover:bg-danger/90",
 };
 
 const sizes: Record<Size, string> = {
