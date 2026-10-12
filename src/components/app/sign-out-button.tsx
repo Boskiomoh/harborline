@@ -1,21 +1,33 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useTranslations } from "next-intl";
-import { SignOut } from "@phosphor-icons/react/dist/ssr";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { signOut } from "@/lib/actions/auth";
 import { clearBrowserQueryCache } from "@/lib/query/browser-client";
+import { SignOut } from "@phosphor-icons/react/dist/ssr";
+import { useTranslations } from "next-intl";
+import { FC, useState, useTransition } from "react";
 
-/**
- * Asks first, then clears the TanStack Query cache (in-memory and the persisted sessionStorage
- * copy) before calling the sign-out server action, so nothing from this session — ticket text,
- * customer names — is still sitting in the browser once it completes.
- */
-export function SignOutButton({ label }: { label: string }) {
+interface SignOutButtonProps {
+  label: string;
+}
+
+// Clears the query cache (in memory and the persisted sessionStorage copy)
+// before the sign-out action runs, so no ticket text or customer names are left
+// sitting in the browser once it completes.
+const SignOutButton: FC<SignOutButtonProps> = ({ label }) => {
   const t = useTranslations("nav.signOutConfirm");
+
+  // State
   const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
+
+  // Handlers
+  const handleConfirm = () => {
+    clearBrowserQueryCache();
+    startTransition(() => {
+      void signOut();
+    });
+  };
 
   return (
     <>
@@ -30,15 +42,12 @@ export function SignOutButton({ label }: { label: string }) {
       >
         <SignOut aria-hidden weight="bold" className="size-[1.125rem]" />
       </button>
+
+      {/* Sign Out Confirm Dialog */}
       <ConfirmDialog
         open={confirming || pending}
         onClose={() => setConfirming(false)}
-        onConfirm={() => {
-          clearBrowserQueryCache();
-          startTransition(() => {
-            void signOut();
-          });
-        }}
+        onConfirm={handleConfirm}
         pending={pending}
         icon={SignOut}
         title={t("title")}
@@ -48,4 +57,6 @@ export function SignOutButton({ label }: { label: string }) {
       />
     </>
   );
-}
+};
+
+export default SignOutButton;

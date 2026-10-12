@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
 import type { Enums } from "@/lib/supabase/database.types";
+import { createClient } from "@/lib/supabase/server";
 
 export type StatusDay = {
   day: string;
@@ -9,7 +9,12 @@ export type StatusDay = {
   resolved_count: number;
 };
 
-export type CategoryRow = { category: Enums<"ticket_category">; ord: number; open_count: number; resolved_count: number };
+export type CategoryRow = {
+  category: Enums<"ticket_category">;
+  ord: number;
+  open_count: number;
+  resolved_count: number;
+};
 
 export type PriorityRow = {
   priority: Enums<"ticket_priority">;
@@ -37,7 +42,9 @@ export type AnalyticsData = {
 /** Calls the `admin_analytics` RPC (admin-only; enforced by the function itself, see the migration). */
 export async function getAnalytics(days: number): Promise<AnalyticsData> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("admin_analytics", { p_days: days });
+  const { data, error } = await supabase.rpc("admin_analytics", {
+    p_days: days,
+  });
   if (error) throw error;
   return data as unknown as AnalyticsData;
 }

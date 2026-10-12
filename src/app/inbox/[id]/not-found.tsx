@@ -1,8 +1,8 @@
-import Link from "next/link";
-import { useTranslations } from "next-intl";
-import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr";
-import { EmptyState } from "@/components/ui/empty-state";
 import { buttonClass } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr";
+import { useTranslations } from "next-intl";
+import Link from "next/link";
 
 export default function InboxTicketNotFound() {
   const t = useTranslations("states");

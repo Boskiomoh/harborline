@@ -1,50 +1,38 @@
-# Harborline — Project Handoff / Context
+# Harborline — Project notes
 
-Paste this whole file into a new chat so it has full context on the project without re-deriving anything from scratch. Written 2026-09-16, mid-build (through Phase 6 of the original workflow, plus a later architecture change — see below).
+The as-built reference for Harborline: the decisions behind it, the schema, the architecture, and the known gaps. The README is the short version.
 
 ---
 
 ## 1. What this is
 
-**Harborline** — "Customer support that keeps its word." Fourth piece in Daniel Omoyibo's Upwork portfolio (alongside Clearway, Brightpath, Fenn Audio). A fictional two-sided support-desk SaaS: a customer portal + an agent inbox + admin analytics, built on Next.js 16 + Supabase, designed to showcase the real Nobus Cloud skill combo (a production support portal, i18n architecture) without literally reusing that i18n scope (see decision log).
-
-Full requirements are in two files at the project root: **`Harborline-PRD.md`** and **`Harborline-WORKFLOW.md`**. Read those for the original spec — this document is the delta of what was actually decided and built, which in a few places differs from the original PRD (all deviations are called out below).
-
-**Owner:** Daniel Omoyibo (ofolafolu@gmail.com). This is a portfolio piece, not a real product — no real payments, no real email delivery, no real company.
-
-**Local path:** `C:\Users\Dell\Personal Projects\harborline`
-**OS:** Windows 11, PowerShell primary shell, Git Bash also available.
-**Not yet a git repo.**
+**Harborline**, "Customer support that keeps its word": a fictional two-sided support desk with a customer portal, an agent inbox and admin analytics, built on Next.js 16 and Supabase. It is a portfolio piece, not a real product: no real payments, no real email delivery, no real company.
 
 ---
 
 ## 2. Supabase project
 
-- **Project ref:** `qgrkrrlccxtniuyflode`
-- **URL:** `https://qgrkrrlccxtniuyflode.supabase.co`
-- **⚠️ This project was reused, not created fresh.** It previously held a different portfolio piece's data (a sneaker product, "VELOCE UNO"). The user explicitly said to wipe and reuse it rather than create a new project (deviates from the PRD's "dedicated project" instruction — this was a conscious user decision, not an oversight). The original data is backed up at `Personal Projects/_backups/supabase-qgrkrrlccxtniuyflode-veloce-2026-09-15.json`.
-- **Migrations** (applied live via the Supabase MCP, and mirrored as files in `supabase/migrations/`):
-  1. `20260915192308_harborline_core_schema.sql` — core tables, RLS, triggers, Storage bucket+policies, Realtime publication
-  2. `20260915192719_english_only_content.sql` — drops the translate-on-write columns (see §4)
-  3. `20260915193231_demo_seed_and_clock.sql` — reseedable demo fixture + nightly clock rebase
-  4. `20260915201034_admin_analytics.sql` — the `admin_analytics()` RPC
-  - No migration exists for the later TanStack Query work (§6) — that was frontend-only, no schema changes.
-- **`get_advisors`**: no RLS/security errors. One non-blocking WARN: leaked-password-protection is disabled in Auth settings (not fixed — low priority for a demo with known credentials, but worth flipping on in the dashboard before a real launch).
+- **Project ref:** `qgrkrrlccxtniuyflode` (`https://qgrkrrlccxtniuyflode.supabase.co`)
+- **Migrations** (applied live, mirrored as files in `supabase/migrations/`; filename timestamps match the live versions):
+  1. `20260915192308_harborline_core_schema.sql`: core tables, RLS, triggers, Storage bucket and policies, Realtime publication
+  2. `20260915192719_english_only_content.sql`: drops the translate-on-write columns (see §3)
+  3. `20260915193231_demo_seed_and_clock.sql`: reseedable demo fixture and nightly clock rebase
+  4. `20260915201034_admin_analytics.sql`: the `admin_analytics()` RPC
+  5. `20260923192536_knowledge_chunks.sql`: AI retrieval table, match function, `tickets.triaged_at` (§10a)
+  6. `20260923192732_knowledge_chunks_trigger.sql`: keeps `knowledge_chunks` in sync (§10a)
+  7. `20260924100000_security_hardening.sql`: demo identity lock, attachment path binding, embed secret, full nightly reset
+- **Advisors:** no RLS or security errors. One non-blocking warning: leaked-password protection is off in Auth settings (see §9).
 
 ---
 
-## 3. Key decisions (deviations from the original PRD — do not "fix" these back)
+## 3. Key decisions (deviations from the original spec, on purpose)
 
-These were explicit user answers to `AskUserQuestion` prompts, not assumptions:
-
-| Area | PRD said | What was actually built |
+| Area | Original spec | What was built |
 |---|---|---|
-| Supabase project | New, dedicated project | Reused/wiped `qgrkrrlccxtniuyflode` (see §2) |
-| Domain | Unspecified/cloud-hosting-flavored | **E-commerce/logistics** — categories are order & delivery, returns & refunds, payments, account, product question |
-| i18n | Real EN/FR switch, translate-on-write ticket content | **English-only.** next-intl is wired (all UI strings go through `messages/en.json`), but there is no French catalog, no switcher, and no translate-on-write. Ticket content is stored and shown as written. A French catalog could be added later without refactoring, but wasn't built. |
-| Seed customers | Not specified beyond 3 demo logins | 3 demo accounts **plus** 5 more seed-only customers and 1 more seed-only agent, so RLS cross-customer tests have real data to bite on |
-| Demo data freshness | Not specified | A `pg_cron` job re-bases every seed timestamp nightly at 04:00 UTC, so the demo always looks "recent" with a realistic SLA mix |
-| Checkpoints | Not specified | User asked to build through Phase 6, then check in before Phase 7 (deploy) — **deploy has not happened yet** |
+| Domain | Unspecified | **E-commerce and logistics**: categories are order & delivery, returns & refunds, payments, account, product question |
+| i18n | EN/FR switch, translate-on-write ticket content | **English only.** next-intl is wired (every UI string goes through `messages/en.json`), but there is no French catalog, no switcher and no translate-on-write. Ticket content is stored and shown as written. A French catalog can be added without refactoring. |
+| Seed customers | 3 demo logins | 3 demo accounts **plus** 5 seed-only customers and 1 seed-only agent, so the cross-customer RLS tests have real data to bite on |
+| Demo data freshness | Unspecified | A nightly `pg_cron` job restores the full fixture, so the demo always looks recent with a realistic SLA mix |
 
 ---
 
@@ -59,7 +47,7 @@ These were explicit user answers to `AskUserQuestion` prompts, not assumptions:
 - `ticket_messages` (id, ticket_id, author_id, body, is_internal_note, created_at) — `translations` and `locale` dropped
 - `ticket_attachments` (id, ticket_id, message_id, storage_path, file_name, mime_type, size_bytes, uploaded_by, created_at)
 - `canned_responses` (id, agent_id, title, body, created_at) — `locale` dropped
-- `ticket_status_events` (id, ticket_id, from_status, to_status, changed_by, created_at) — **added beyond the PRD's schema**, powers the ticket timeline and the "tickets by status over time" chart
+- `ticket_status_events` (id, ticket_id, from_status, to_status, changed_by, created_at) — **added beyond the original schema**, powers the ticket timeline and the "tickets by status over time" chart
 
 **`private` schema** (not exposed via the Data API): `is_staff()`, `is_admin()`, `is_customer()` SECURITY DEFINER role-check helpers; `handle_new_user()` (creates a profile row on signup); `set_updated_at()`, `tickets_before_update()`, `log_ticket_status()`, `on_ticket_message_insert()` triggers (the last one auto-transitions ticket status: a staff reply on a `new` ticket flips it to `in_progress` and stamps `first_response_at`; a customer reply on `waiting_on_customer`/`resolved` reopens it to `in_progress`); `demo_clock` table + `seed_ticket()`/`reseed_demo()`/`rebase_demo_clock()` functions for the demo fixture (guarded by a `harborline.seeding` session setting so triggers don't double-log during seeding/rebasing).
 
@@ -87,58 +75,38 @@ Password for all three real demo logins: **`harborline-demo-2026`**
 
 Seed-only (no quick-login button, real but unremarkable passwords): jonah.whitfield@harborline.app (agent), ines.carvalho@example.com, marcus.bell@example.com, hana.sato@example.com, grace.adeyemi@example.com, oliver.brandt@example.com, leah.morrison@example.com (all customers).
 
-**Seed data:** 22 tickets (#1001–1022) across every status/priority, ~60 messages, 6 internal notes, 6 canned responses. `select private.reseed_demo();` resets to this clean fixture at any time (via the Supabase MCP or SQL editor) — last run 2026-09-23 after the AI Assist build/test session (§11d), so the project is currently on the clean 22-ticket fixture, not #1023/#1024.
+**Seed data:** 22 tickets (#1001–1022) across every status/priority, ~60 messages, 6 internal notes, 6 canned responses. `select private.reseed_demo();` resets to this clean fixture at any time, and the nightly job does the same.
 
 ---
 
-## 6. Architecture as built
+## 6. Architecture
 
-**Stack:** Next.js 16.3.5 (App Router, Turbopack), React 19.2.8, TypeScript, Tailwind CSS v4, next-intl 4.14.5, `@supabase/supabase-js` 2.116.0, `@supabase/ssr` 0.12.7, Recharts 3.10.1, `@phosphor-icons/react` 2.1.10, Zod 4.6.5, `react-hook-form` 7.88.0, `@hookform/resolvers` 5.9.1. Recently added: `@tanstack/react-query` 5.103.1 + `@tanstack/react-query-devtools` + `@tanstack/query-async-storage-persister` + `@tanstack/react-query-persist-client` (all pinned to 5.103.1).
+**Stack:** Next.js 16 (App Router, Turbopack, React Compiler on), React 19.2, TypeScript, Tailwind CSS v4, next-intl 4, `@supabase/supabase-js` and `@supabase/ssr`, TanStack Query 5, Recharts 3, `@phosphor-icons/react`, Zod 4, react-hook-form.
 
-**Auth:** Supabase Auth via `@supabase/ssr`. `src/lib/supabase/{client.ts,server.ts,proxy.ts}`, `src/proxy.ts` (Next 16 renamed `middleware.ts` → `proxy.ts`). `src/lib/auth.ts` exports `getViewer()` (React `cache()`-wrapped, validates the JWT via `getClaims()`) and `requireRole(roles)`. Protected prefixes: `/portal`, `/inbox`, `/analytics` — redirect to `/sign-in?next=...` if not authorized.
+**Auth:** Supabase Auth via `@supabase/ssr`: `src/lib/supabase/{client,server,proxy}.ts` and `src/proxy.ts` (Next 16 renamed `middleware.ts` to `proxy.ts`). `src/lib/auth.ts` exports `getViewer()` (React `cache()`-wrapped, validates the JWT with `getClaims()`) and `requireRole(roles)`. The protected prefixes `/portal`, `/inbox` and `/analytics` redirect to `/sign-in?next=...`. Sign-in and sign-out are server actions in `src/lib/actions/auth.ts`; everything else goes through the API below.
 
-**Server actions kept as-is:** `src/lib/actions/auth.ts` (`signIn`, `signInAsDemo`, `signOut`). `src/lib/actions/tickets.ts` was **deleted** — all ticket mutations moved to the API layer described below.
+### 6a. Data layer: TanStack Query over a thin `/api`
 
-### 6a. The TanStack Query + Zod API layer (added late in the build, on explicit user request)
+- **Route handlers** under `src/app/api/` (see §7) call the same `src/lib/{tickets,inbox,analytics}.ts` functions the server-rendered pages use, so the API and the SSR path never duplicate query logic. `src/lib/api/guard.ts` provides `requireApiRole(roles)` / `requireApiViewer()` (a viewer or a ready-made 401/403) plus `parseBody()` / `parseIdParam()`. Request bodies are validated with the Zod input schemas in `src/lib/api/schemas.ts`; responses are returned as-is. Errors are codes (`{ error: "generic" | "forbidden" | "not_found" | ... }`) that the UI turns into translated messages.
+- **Client:** `src/lib/api/instance.ts` exports `apiInstance` (`get` / `post` / `patch`), which rejects with a typed `ApiError(status, body)` on any non-2xx response.
+- **Query hooks:** `src/hooks/use-app-hooks/use-{tickets,inbox,analytics,ai}.tsx`, one hook per read, with kebab-case query keys written inline.
+- **Mutations** live in the component that triggers them and refetch the affected query on success. There are no optimistic updates and no manual cache patches.
+- **First paint:** each page is a Server Component that calls `requireRole()`, prefetches its data with `prefetchQuery` and wraps a client component in `<HydrationBoundary>`. The client hook resolves from the hydrated cache, so first paint makes no `/api/*` request.
+- **Query client:** `src/lib/query/client.ts` holds the shared defaults (`staleTime` 30 s, `gcTime` 24 h, no refetch on focus, `retry: 1`); `get-query-client.ts` gives each server request a fresh client; `browser-client.ts` is the browser singleton plus a `sessionStorage` persister, so the cache survives reloads within the tab. Sign-out (`src/components/app/sign-out-button.tsx`) clears both the cache and the persisted copy; `browser-client.ts` documents the short suppression window that stops the persister's throttled write from bringing it back.
+- **Realtime:** `src/hooks/use-live-ticket.ts` (one ticket: messages, ticket updates, status events) and `src/components/inbox/inbox-provider.tsx` (the whole inbox: new tickets, status and assignment changes, new messages, unread badges). An event refetches the affected query through the same RLS-scoped API as every other read.
 
-The user asked, in a later message, to introduce TanStack Query with a Zod-validated `/api` layer and session-persisted caching, specifically so the frontend doesn't refetch from the backend on every navigation. A `/loop`-free workflow was proposed and approved before building it. What exists now:
+### 6b. Server-side data
 
-- **Contract:** `src/lib/api/schemas.ts` — every shape (tickets, messages, events, attachments, inbox rows, analytics, mutation inputs) is a Zod schema. Route handlers validate their response against it before sending; client hooks parse the fetch response with the same schema. One shared source of truth.
-- **API client:** `src/lib/api/client.ts` — `apiFetch<T>(url, schema, init)` throws a typed `ApiError` on any non-2xx response.
-- **Server guard:** `src/lib/api/guard.ts` — `requireApiRole(roles)` / `requireApiViewer()` return either the viewer or a ready-made 401/403 `NextResponse`; `parseBody()` / `parseIdParam()` for request validation.
-- **Route handlers** under `src/app/api/`:
-  - `tickets/route.ts` — GET (customer's own list) / POST (create ticket, customer-only)
-  - `tickets/[id]/route.ts` — GET (detail, RLS-scoped) / PATCH (status/priority/assignee, staff-only)
-  - `tickets/[id]/messages/route.ts` — POST (reply or internal note, optional status change)
-  - `tickets/[id]/attachments/route.ts` — POST (records metadata for a file the browser already uploaded **directly to Supabase Storage** — uploads deliberately stay off the API, per explicit decision, to avoid proxying file bytes through a serverless function with a request-size limit)
-  - `inbox/route.ts`, `staff/route.ts`, `canned-responses/route.ts` (all staff-only), `sla-policies/route.ts` (any signed-in viewer), `analytics/route.ts` (admin-only)
-  - Every handler calls the **same** `src/lib/{tickets,inbox,analytics}.ts` data functions the server-rendered pages use for prefetching — no duplicated query logic between the API and the SSR path.
-- **Query client:**
-  - `src/lib/query/client.ts` — shared defaults (`staleTime: 30s`, `gcTime: 24h`, `refetchOnWindowFocus: false`, `retry: 1`)
-  - `src/lib/query/get-query-client.ts` — server-only, React `cache()`-wrapped, one fresh `QueryClient` per request, used only for `prefetchQuery` + `dehydrate` in Server Components
-  - `src/lib/query/keys.ts` — the `qk` key factory (`qk.myTickets()`, `qk.ticket(id)`, `qk.inbox()`, `qk.staff()`, `qk.cannedResponses()`, `qk.slaPolicies()`, `qk.analytics(days)`)
-  - `src/lib/query/browser-client.ts` — the browser-side singleton `QueryClient` + a `sessionStorage`-backed persister. **Session persistence:** the cache survives reloads within the tab and is wiped on sign-out. There's a documented fix in here for a real race condition: the persister's own throttled write (default 1s) could resurrect an empty cache entry in `sessionStorage` right after sign-out's `removeClient()` call; fixed with a short suppression window.
-- **Provider:** `src/components/providers/query-provider.tsx` (`PersistQueryClientProvider`), mounted in `src/app/layout.tsx` inside `NextIntlClientProvider`.
-- **Query/mutation hooks:**
-  - `src/lib/queries/tickets.ts` — `useMyTicketsQuery`, `useTicketDetailQuery`, `useCreateTicketMutation`, `usePostMessageMutation`, `useUpdateTicketMutation`, `useRecordAttachmentMutation` — plus shared cache-patch helper functions (`appendTicketMessage`, `patchTicketCore`, `appendTicketEvent`, `mergeTicketPeople`, `prependMyTicket`) used by **both** the mutations' `onSuccess`/`onMutate` handlers **and** the Realtime subscriptions, so there's one code path for "a message/status/event landed, patch the cache."
-  - `src/lib/queries/inbox.ts` — `useInboxQuery`, `useStaffQuery`, `useCannedResponsesQuery`, `useSlaPoliciesQuery`, `patchInboxList`
-  - `src/lib/queries/analytics.ts` — `useAnalyticsQuery(days)`
-- **The pattern used on every page:** a Server Component does `requireRole()` + `queryClient.prefetchQuery(...)` (or `getX(id)` directly + `setQueryData` when the result needs inspecting for a 404 first) + `dehydrate(queryClient)`, wrapping a client component in `<HydrationBoundary>`. The client component calls the matching `useQuery` hook, which resolves from the already-hydrated cache — **zero client-side fetch on first paint.** Confirmed in the browser via the network tab on every route (portal list, ticket detail, inbox, inbox ticket, analytics): only the RSC navigation request fires, no `/api/*` call.
-- **Realtime** now patches the Query cache directly via `queryClient.setQueryData()` instead of holding its own `useState` — see `src/components/tickets/use-live-ticket.ts` (per-ticket subscription: messages, ticket updates, status events) and `src/components/inbox/inbox-provider.tsx` (inbox-wide subscription: new tickets, status/assignment changes, new messages, unread badges).
-- **Sign-out:** `src/components/app/sign-out-button.tsx` clears the in-memory Query cache and the persisted `sessionStorage` copy (with the race-condition fix above) before calling the `signOut` server action.
-
-### 6b. Data layer (server-side)
-
-- `src/lib/tickets.ts` — `getMyTicketsList()`, `getTicketDetail(id)` (RLS-scoped raw fetch), `getTicketDetailForViewer(id, viewer)` (merges the full staff list into `people` for staff viewers, so the assignment UI can always resolve a name even for staff who haven't posted yet), `getSlaTargets()`
-- `src/lib/inbox.ts` — `getInboxTickets()`, `getStaff()`, `getCannedResponses()`
-- `src/lib/analytics.ts` — `getAnalytics(days)` (calls the `admin_analytics` RPC)
-- `src/lib/sla.ts` — pure functions, no React: `computeSla()`, `remainingFraction()`, `durationParts()`
-- `src/lib/roles.ts` — `homeForRole()`, `isStaff()`
-- `src/lib/time.ts` — `getRequestNow()` (React `cache()`-wrapped, one timestamp per server request so every relative-time label on a page agrees)
+- `src/lib/tickets.ts`: `getMyTicketsList()`, `getTicketDetail(id)` (RLS-scoped), `getTicketDetailForViewer(id, viewer)` (merges the full staff list into `people` for staff, so the assignment UI can always resolve a name), `getSlaTargets()`
+- `src/lib/inbox.ts`: `getInboxTickets()`, `getStaff()`, `getCannedResponses()`
+- `src/lib/analytics.ts`: `getAnalytics(days)` (calls the `admin_analytics` RPC)
+- `src/lib/sla.ts`: pure functions, no React: `computeSla()`, `remainingFraction()`, `durationParts()`
+- `src/lib/roles.ts`: `homeForRole()`, `isStaff()`
+- `src/lib/time.ts`: `getRequestNow()` (`cache()`-wrapped, one timestamp per server request so every relative time on a page agrees)
 
 ### 6c. Design system (implemented in `src/app/globals.css`)
 
-Tokens exactly per PRD §3, plus two derived tokens the PRD didn't specify:
+Tokens from the original spec, plus two derived ones it didn't specify:
 
 | Token | Value | Note |
 |---|---|---|
@@ -153,21 +121,21 @@ Tokens exactly per PRD §3, plus two derived tokens the PRD didn't specify:
 | `--accent-soft` | `#DDEDE7` | |
 | `--accent-ink` | `#083A30` | |
 | `--warm` | `#C1571F` | coral |
-| `--warm-soft` | `#F8E9DC` | **added** — PRD's `--warm` was too light for small text at AA contrast |
+| `--warm-soft` | `#F8E9DC` | **added** — the spec's `--warm` was too light for small text at AA contrast |
 | `--warm-ink` | `#8F3D12` | **added**, same reason |
 | `--success` / `--warning` / `--danger` | `#3F7D4A` / `#B8863A` / `#A63A2E` | |
 
 - **Fonts:** Bricolage Grotesque (display, `wdth` axis only, `display: "optional"` — deliberately, to avoid layout shift from a late font swap), Public Sans (body), JetBrains Mono (data/mono, `preload: false`). All self-hosted via `next/font`, no runtime Google Fonts link.
 - **Shape:** 8px radius on cards/panels, full-pill on badges/buttons — one scale, no mixing.
 - **Chart colors deliberately differ from the UI tokens.** The raw `--accent`/`--warm` failed the dataviz-skill palette validator's chroma-floor check when used as large chart fills. Documented in `src/lib/chart-colors.ts`: status chart uses `#D09A2C` (new) / `#23A383` (in_progress) / `#D4602A` (waiting) / `#00806A` (resolved); category chart uses `#D4602A` (open) / `#00806A` (resolved).
-- **Logo:** custom mark, not a stock logo (per PRD). `src/components/brand/logo-mark.tsx` — a teal rounded tile with a cream "H" formed from two mooring posts, tied together by a coral horizontal line. Favicon at `src/app/icon.svg`, Apple touch icon generated at build time via `next/og` `ImageResponse` in `src/app/apple-icon.tsx`. `Wordmark` component pairs the mark with "Harborline" in the display font.
+- **Logo:** custom mark, not a stock logo. `src/components/brand/logo-mark.tsx` — a teal rounded tile with a cream "H" formed from two mooring posts, tied together by a coral horizontal line. Favicon at `src/app/icon.svg`, Apple touch icon generated at build time via `next/og` `ImageResponse` in `src/app/apple-icon.tsx`. `Wordmark` component pairs the mark with "Harborline" in the display font.
 
 ### 6d. Notable UI components
 
-- `src/components/ui/sla-badge.tsx` — **the pill itself is the gauge**, not a separate progress bar next to it (explicit user correction mid-build). A `color-mix` fill drains left-to-right behind a Timer/Warning icon as the response-time clock runs down: green → amber → coral → red, ending empty-and-red once overdue. Answered tickets show a flat "Replied in Xm" / "Replied in Xm, past target" state with a check icon and no fill.
+- `src/components/ui/sla-badge.tsx` — **the pill itself is the gauge**, not a separate progress bar next to it. A `color-mix` fill drains left-to-right behind a Timer/Warning icon as the response-time clock runs down: green → amber → coral → red, ending empty-and-red once overdue. Answered tickets show a flat "Replied in Xm" / "Replied in Xm, past target" state with a check icon and no fill.
 - `src/components/ui/priority-label.tsx` — a 4-bar signal icon (like a signal-strength indicator): filled-bar count = priority level, colored per level (low = 1 bar green, normal = 2 amber, high = 3 coral, urgent = 4 red).
 - `src/components/app/sidebar.tsx` — collapsible desktop sidebar; the collapsed/expanded state is stored in a `harborline-sidebar` cookie so the server renders the correct width on first paint (no flash of the wrong state).
-- `src/components/app/app-nav.tsx`, `app-shell.tsx` — shared nav/shell, mobile menu.
+- `src/components/app/app-nav.tsx`, `app-shell.tsx`, `mobile-nav.tsx`: shared nav, shell and mobile menu.
 
 ---
 
@@ -186,9 +154,9 @@ Tokens exactly per PRD §3, plus two derived tokens the PRD didn't specify:
 /api/tickets/[id]              GET detail / PATCH update (staff)
 /api/tickets/[id]/messages     POST reply or note
 /api/tickets/[id]/attachments  POST record uploaded-file metadata
-/api/tickets/[id]/ai/draft     POST streamed draft reply (staff, §11)
-/api/tickets/[id]/ai/triage    POST suggested category/priority (staff, §11)
-/api/tickets/[id]/ai/summary   POST thread summary (staff, §11)
+/api/tickets/[id]/ai/draft     POST streamed draft reply (staff, §10)
+/api/tickets/[id]/ai/triage    POST suggested category/priority (staff, §10)
+/api/tickets/[id]/ai/summary   POST thread summary (staff, §10)
 /api/inbox                     GET (staff)
 /api/staff                     GET (staff)
 /api/canned-responses          GET (staff)
@@ -198,39 +166,30 @@ Tokens exactly per PRD §3, plus two derived tokens the PRD didn't specify:
 
 ---
 
-## 8. Verified so far (all via live browser testing with Playwright, not assumed)
+## 8. How it is verified
 
-- All three demo logins work and show a fully populated product.
-- **RLS, tested directly against both the Supabase client and the new `/api` routes** (not just hidden in the UI): a customer gets 403 from every staff/admin-only route, 200 from their own ticket, and a plain 404 (not a permission leak) for another customer's ticket. Storage upload policies also tested (own-folder upload succeeds, cross-customer folder and anonymous upload both rejected).
-- Realtime: replying as the customer in one tab appears live in the agent's open ticket in another, with **zero client-side fetch** — confirmed by patching the TanStack Query cache directly from the Realtime payload.
-- Every server-rendered route (portal list, ticket detail, inbox, inbox ticket, analytics) hydrates from the server prefetch with no client-side `/api/*` request on first paint — confirmed via the network tab.
-- The new-ticket wizard's full flow works end to end: create → direct-to-Storage upload → attachment metadata recorded via the API → thread shows the file.
-- An optimistic mutation (e.g. assigning a ticket) updates both the open ticket detail pane and the corresponding inbox row from a single request.
-- Sign-out fully clears the persisted `sessionStorage` cache (verified after fixing the persist-throttle race described in §6a).
-- `get_advisors` shows no RLS/security errors.
-- Zero dark-background sections anywhere.
-- `tsc --noEmit` and `eslint` are both clean. A full `next build` succeeds.
+- **Automated:** `npm test` (Vitest, 24 tests) runs against the real Supabase project and a server on port 3100: AI route access by role (`tests/ai-access.test.ts`), the rate limiter (`tests/ai-ratelimit.test.ts`), which messages each AI feature may read (`tests/ai-thread.test.ts`) and the post-sign-in redirect guard (`tests/safe-next.test.ts`). `tsc --noEmit`, `eslint .` and `next build` are clean.
+- **RLS,** tested against both the Supabase client and the `/api` routes, not just hidden in the UI: a customer gets 403 from every staff or admin route, 200 from their own ticket and a plain 404 (not a permission leak) for another customer's ticket. Storage: an own-folder upload succeeds; cross-customer and anonymous uploads are rejected.
+- **In the browser:** all three demo logins; a customer reply appearing live in the agent's open ticket; the new-ticket wizard end to end (create, direct-to-Storage upload, attachment recorded, file in the thread); sign-out clearing the persisted cache.
 
-## 9. Not yet done / known gaps
+## 9. Known gaps
 
-1. **Test data cleanup:** `select private.reseed_demo();` was run 2026-09-23 (post AI-Assist build) and the project is on the clean 22-ticket fixture. Re-run it before any future delivery if more QA tickets accumulate. 2–3 small test files may still be sitting in the `ticket-attachments` Storage bucket from earlier RLS testing — remove via the Storage dashboard if that matters (SQL can't delete Storage objects).
-2. **Lighthouse LCP** is over the 2.5s target on signed-in routes (~3.5–3.8s simulated), traced to ~0.5–0.7s per-query latency from this dev machine to the Supabase project's region — **not** something the TanStack Query work fixes (that was about avoiding *repeat* requests, not first-load latency). Expected to improve once deployed to Vercel in the same region as Supabase. The landing page itself is fast (~0.3s unthrottled LCP). CLS is 0 everywhere (fixed earlier via the font's `display: "optional"`).
-3. **Stretch items not built:** dark mode toggle, canned-response management UI (add/edit own snippets), a second language beyond the i18n-ready English-only setup.
-4. **Leaked-password-protection** is off in Supabase Auth settings — flip on in the dashboard if this ever needs to look production-hardened.
-5. **Phase 7 (deploy) hasn't started.** Needs: which Vercel account/team to deploy to, and whether to create a GitHub repo (name, public/private). The project isn't a git repo yet.
-6. Haven't re-run a full Lighthouse pass since the TanStack Query migration (expected to help repeat-navigation perf, not change the SSR-per-navigation first-load numbers).
+1. **Lighthouse LCP** is over the 2.5 s target on signed-in routes (about 3.5 to 3.8 s simulated), traced to per-query latency between the machine and the Supabase region, not to the client. The landing page is fast (about 0.3 s unthrottled LCP), and CLS is 0 everywhere thanks to the display font's `display: "optional"`.
+2. **Not built:** dark mode, a canned-response management UI (add and edit your own snippets), and a second language.
+3. **Leaked-password protection** is off in Supabase Auth settings; turn it on before anything production-facing.
+4. A few test files from early RLS testing may remain in the `ticket-attachments` bucket. SQL can't delete Storage objects, so remove them from the Storage dashboard if it matters.
 
 ---
 
-## 11. AI Assist (built 2026-09-23, per `docs/AI-ASSIST.md`)
+## 10. AI Assist
 
-Three agent-facing features, all staff-only (`requireApiRole(["agent", "admin"])`), all inside `/inbox`. Customers never see or trigger any of it. Full spec, workflow, and the "why nothing is trained" explanation live in `docs/AI-ASSIST.md`; this section is the as-built delta.
+Three agent-facing features, all staff-only (`requireApiRole(["agent", "admin"])`), all inside `/inbox`. Customers never see or trigger any of it. `docs/AI-ASSIST.md` explains how it works and why nothing is trained; this section covers what was built.
 
-- **Draft with AI** (`ai-draft-panel.tsx`) — streams a suggested reply built from the ticket's public thread plus the nearest canned responses and resolved-ticket replies (RAG via `knowledge_chunks`, §11a). Lists its sources as chips. Inserting over existing composer text asks for confirmation first (`ConfirmDialog`, tone `danger`); nothing ever sends without the agent's own click on the existing Send button.
+- **Draft with AI** (`ai-draft-panel.tsx`) — streams a suggested reply built from the ticket's public thread plus the nearest canned responses and resolved-ticket replies (RAG via `knowledge_chunks`, §10a). Lists its sources as chips. Inserting over existing composer text asks for confirmation first (`ConfirmDialog`, tone `danger`); nothing ever sends without the agent's own click on the existing Send button.
 - **Suggested category/priority** (`ai-triage-chip.tsx`) — one Groq call, made once per ticket per session, only on `status = 'new'` tickets, only in the ticket detail (not the list, to stay well inside the free-tier rate limit). Accept goes through the same `PATCH /api/tickets/[id]` as a manual change. A new `tickets.triaged_at` column (stamped by a trigger whenever category/priority changes with a signed-in `auth.uid()`) is what makes the chip never reappear once a human — or Accept — has already set it; seeding and the nightly clock rebase run with no `auth.uid()`, so they never stamp it.
-- **Summarize thread** (`ai-summary-card.tsx`) — shown on tickets with 4+ messages (the spec says "more than 6"; lowered so it's demoable on the seed data — see `docs/AI-ASSIST.md` §7.N). Internal notes are included in the summary only for staff viewers, enforced explicitly in `src/lib/ai/thread.ts` rather than assumed from the route guard.
+- **Summarize thread** (`ai-summary-card.tsx`) — shown on tickets with 4+ messages (the original spec said more than 6; lowered so it shows on the seed data). Internal notes are included in the summary only for staff viewers, enforced explicitly in `src/lib/ai/thread.ts` rather than assumed from the route guard.
 
-### 11a. Retrieval (RAG, not training)
+### 10a. Retrieval (RAG, not training)
 
 - `public.knowledge_chunks` (migration `20260923192536`) — `source_type` (`canned_response` | `resolved_ticket`), `source_id`, `category`, `content`, `embedding vector(384)`, unique on `(source_type, source_id)` so re-embedding is an upsert. RLS: staff `select` only, no `insert`/`update`/`delete` policy for any client role — every write goes through the `embed` Edge Function running as the service role. `public.match_knowledge_chunks()` (SECURITY INVOKER) does the cosine-similarity search, so a customer calling it gets an empty set rather than an error that would confirm the table exists.
 - `supabase/functions/embed` — Deno Edge Function, `Supabase.ai.Session("gte-small")`, two modes: `{ text }` → a query embedding (staff JWT required), `{ index: {...} }` → embeds one canned response or one qualifying ticket message and upserts it (requires the Vault secret `harborline_embed_secret` in `x-embed-secret`, which `private.request_embedding` sends, or a staff JWT, which the backfill script sends; it re-derives eligibility itself from the service-role read, so a caller can at most trigger an idempotent re-index of a row that already belongs in the table — it can never inject content, and an internal note can never become a chunk). Deployed with `verify_jwt: false` because the database triggers call it with no user JWT.
@@ -238,46 +197,19 @@ Three agent-facing features, all staff-only (`requireApiRole(["agent", "admin"])
 - `scripts/backfill-knowledge.ts` — one-off/idempotent, signs in as the agent demo account, calls the same Edge Function per missing `(source_type, source_id)`. `npm run backfill:knowledge`.
 - Retrieval similarity floor is `0.78` (`src/lib/ai/retrieve.ts`), calibrated against the live seed data: gte-small puts almost any two English support messages at ~0.70–0.72, genuinely related sources land at ~0.79–0.85.
 
-### 11b. Model layer
+### 10b. Model layer
 
-- `src/lib/ai/groq.ts` / `gemini.ts` — same `ChatProvider` surface (`chat()` JSON mode, `streamChat()`), so `src/lib/ai/assist.ts` falls back Groq → Gemini on any failure, and a JSON reply that fails Zod validation counts as a failure (the next provider is tried rather than a caller ever seeing a value outside the real enum). Model: `openai/gpt-oss-120b` on Groq (`GROQ_MODEL` to override) — Llama 3.3 70B isn't offered on this account's free tier; gpt-oss-120b supports strict JSON-schema output and answers in under a second. Gemini fallback is wired but **no `GEMINI_API_KEY` is set** (user chose not to provide one); the app runs on Groq alone and degrades to the calm "unavailable" state if Groq fails, per spec.
+- `src/lib/ai/groq.ts` / `gemini.ts` — same `ChatProvider` surface (`chat()` JSON mode, `streamChat()`), so `src/lib/ai/assist.ts` falls back Groq → Gemini on any failure, and a JSON reply that fails Zod validation counts as a failure (the next provider is tried rather than a caller ever seeing a value outside the real enum). Model: `openai/gpt-oss-120b` on Groq (`GROQ_MODEL` to override) — Llama 3.3 70B isn't offered on this account's free tier; gpt-oss-120b supports strict JSON-schema output and answers in under a second. Gemini fallback is wired but **no `GEMINI_API_KEY` is set**; the app runs on Groq alone and degrades to the calm "unavailable" state if Groq fails, per spec.
 - `src/lib/ai/ratelimit.ts` — Upstash REST, two `INCR`s per request per UTC day: per visitor, i.e. account + client IP (`AI_DAILY_LIMIT`, default 30), and per account across IPs (`AI_ACCOUNT_DAILY_LIMIT`, default 300), because the demo staff logins are shared by every hirer. No Upstash vars → no-op. Upstash error (unreachable, bad credentials, database full) → fails open, logs once per process. Verified live: a forced `AI_DAILY_LIMIT=1` run showed the third call return 429 with the inline "You've used today's AI assist allowance" message and no crash.
 - Prompts (`src/lib/ai/prompts.ts`) explicitly tell the draft model the reference material is *other tickets'* history, not this ticket's — an earlier version, without that line, would sometimes narrate a saved reply's action ("I've emailed you a label") as already having happened on the current ticket. Fixed by stating the last-speaker situation (agent waiting on customer vs. customer waiting on a reply) directly in the prompt.
 
-### 11c. UI additions beyond the AI panels
+### 10c. UI additions that came with it
 
-Per user request, added while building this: a confirmation-dialog system (`src/components/ui/confirm-dialog.tsx`, native `<dialog>`, no focus-trap library), a toast system (`src/components/ui/toaster.tsx`, top-right, errors linger longer), and wired both into existing flows that previously acted with no assurance step or feedback: sign-out now confirms first (`sign-out-button.tsx`), resolving a ticket confirms first (it tells the customer the problem is closed), and every reply/note/status/assignment/priority change and AI action now toasts a result. `buttonClass` gained a `danger` variant (white on `--danger`, 6.1:1) for destructive confirms.
+A confirmation-dialog system (`src/components/ui/confirm-dialog.tsx`, native `<dialog>`, no focus-trap library), a toast system (`src/components/ui/toaster.tsx`, top-right, errors linger longer), and wired both into existing flows that previously acted with no assurance step or feedback: sign-out now confirms first (`sign-out-button.tsx`), resolving a ticket confirms first (it tells the customer the problem is closed), and every reply/note/status/assignment/priority change and AI action now toasts a result. `buttonClass` gained a `danger` variant (white on `--danger`, 6.1:1) for destructive confirms.
 
-### 11d. Verified live (Playwright + direct SQL, matching §8's standard)
+### 10d. Verified live
 
 - Draft, triage, and summary all tested end-to-end as the agent demo account on real tickets; customer and signed-out requests to all three `/api/tickets/[id]/ai/*` routes confirmed 403/401.
 - `knowledge_chunks` confirmed unreadable and unwritable via the Supabase client as both the customer and agent demo accounts (only the service role writes); confirmed zero internal-note content ever appears in a chunk, checked directly against the live table.
 - Triage evaluated against 10 real seed tickets: category matched the human-assigned category 10/10; priority matched 6/10, every miss one level off.
-- All 19 automated tests pass (`npm test` — `tests/ai-thread.test.ts`, `tests/ai-ratelimit.test.ts`, `tests/ai-access.test.ts`), plus `tsc --noEmit`, `eslint .`, and `next build` all clean.
 - Unavailable state (`GROQ_API_KEY`/`GEMINI_API_KEY` both unset) confirmed live: inbox renders normally, both the triage chip and draft panel show the calm "AI assist isn't available right now" note, no crash.
-
-### 11e. Files
-
-```
-supabase/functions/embed/index.ts
-supabase/migrations/20260923192536_knowledge_chunks.sql
-supabase/migrations/20260923192732_knowledge_chunks_trigger.sql
-scripts/backfill-knowledge.ts
-src/lib/ai/{groq,gemini,assist,retrieve,ratelimit,prompts,thread,route}.ts
-src/app/api/tickets/[id]/ai/{draft,triage,summary}/route.ts
-src/lib/queries/ai.ts
-src/components/inbox/{ai-draft-panel,ai-triage-chip,ai-summary-card,ai-shared}.tsx
-src/components/ui/{confirm-dialog,toaster}.tsx
-tests/{helpers,ai-thread.test,ai-ratelimit.test,ai-access.test}.ts
-vitest.config.ts
-```
-
----
-
-## 12. Working conventions established this session
-
-- User wants to be **asked, not guessed at**, for anything genuinely ambiguous (domain choices, architecture trade-offs) — multiple rounds of `AskUserQuestion` were used and are the source of §3's decisions.
-- User corrects imprecise UI implementations directly and expects the fix to match their exact framing (e.g. "the pill itself is the gauge, not a bar next to it").
-- Every schema change goes through the Supabase MCP (`apply_migration`) live, and is **also** written to `supabase/migrations/` as a file for the repo, with the filename's timestamp matching the live migration version.
-- Verification is done live in a real browser (Playwright MCP) against the running dev server on port 3100, not just by reading code — network tab, console errors, and screenshots are checked after every meaningful change.
-- Production builds are spot-checked on port 3200 when performance or build-correctness is in question.

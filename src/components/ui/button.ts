@@ -10,7 +10,8 @@ const base =
 
 const variants: Record<Variant, string> = {
   primary: "bg-accent text-white shadow-soft hover:bg-accent-ink",
-  secondary: "border border-border bg-surface text-ink hover:border-ink-faint hover:bg-surface-alt/50",
+  secondary:
+    "border border-border bg-surface text-ink hover:border-ink-faint hover:bg-surface-alt/50",
   ghost: "text-ink-soft hover:bg-surface-alt hover:text-ink",
   // Destructive confirmations only (white on --danger is 6.1:1).
   danger: "bg-danger text-white shadow-soft hover:bg-danger/90",
@@ -22,10 +23,11 @@ const sizes: Record<Size, string> = {
   lg: "h-12 px-6 text-base",
 };
 
-export function buttonClass({
+const buttonClass = ({
   variant = "primary",
   size = "md",
   className,
-}: { variant?: Variant; size?: Size; className?: string } = {}) {
-  return cn(base, variants[variant], sizes[size], className);
-}
+}: { variant?: Variant; size?: Size; className?: string } = {}) =>
+  cn(base, variants[variant], sizes[size], className);
+
+export { buttonClass };

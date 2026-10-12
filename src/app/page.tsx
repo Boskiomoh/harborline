@@ -1,13 +1,14 @@
-import { useTranslations } from "next-intl";
-import { SiteHeader } from "@/components/marketing/site-header";
-import { Hero } from "@/components/marketing/hero";
-import { HowItWorks } from "@/components/marketing/how-it-works";
-import { TwoViews } from "@/components/marketing/two-views";
-import { DemoRoles } from "@/components/marketing/demo-roles";
-import { SiteFooter } from "@/components/marketing/site-footer";
+import DemoRoles from "@/components/marketing/demo-roles";
+import Hero from "@/components/marketing/hero";
+import HowItWorks from "@/components/marketing/how-it-works";
+import SiteFooter from "@/components/marketing/site-footer";
+import SiteHeader from "@/components/marketing/site-header";
+import TwoViews from "@/components/marketing/two-views";
 import { SkipLink } from "@/components/ui/skip-link";
+import { NextPage } from "next";
+import { useTranslations } from "next-intl";
 
-export default function HomePage() {
+const HomePage: NextPage = () => {
   const t = useTranslations("nav");
 
   return (
@@ -23,4 +24,6 @@ export default function HomePage() {
       <SiteFooter />
     </>
   );
-}
+};
+
+export default HomePage;

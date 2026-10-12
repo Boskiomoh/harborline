@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
 import { getViewer, type Viewer } from "@/lib/auth";
 import type { Role } from "@/lib/roles";
+import { NextResponse } from "next/server";
+import { z } from "zod";
 import type { ApiErrorBody } from "./schemas";
 
 export function apiError(status: number, body: ApiErrorBody) {
@@ -14,7 +14,8 @@ export type Guarded = { viewer: Viewer } | { response: NextResponse };
 export async function requireApiRole(allowed: Role[]): Promise<Guarded> {
   const viewer = await getViewer();
   if (!viewer) return { response: apiError(401, { error: "unauthorized" }) };
-  if (!allowed.includes(viewer.role)) return { response: apiError(403, { error: "forbidden" }) };
+  if (!allowed.includes(viewer.role))
+    return { response: apiError(403, { error: "forbidden" }) };
   return { viewer };
 }
 
@@ -33,7 +34,12 @@ export async function parseBody<T extends z.ZodType>(
   try {
     json = await request.json();
   } catch {
-    return { response: apiError(400, { error: "invalid", message: "Body must be valid JSON." }) };
+    return {
+      response: apiError(400, {
+        error: "invalid",
+        message: "Body must be valid JSON.",
+      }),
+    };
   }
 
   const parsed = schema.safeParse(json);
@@ -41,7 +47,10 @@ export async function parseBody<T extends z.ZodType>(
     return {
       response: apiError(400, {
         error: "invalid",
-        issues: parsed.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })),
+        issues: parsed.error.issues.map((issue) => ({
+          path: issue.path.join("."),
+          message: issue.message,
+        })),
       }),
     };
   }
@@ -49,8 +58,11 @@ export async function parseBody<T extends z.ZodType>(
 }
 
 /** Parses a numeric `[id]` route param; returns a 404 response if it isn't one. */
-export function parseIdParam(id: string): { id: number } | { response: NextResponse } {
+export function parseIdParam(
+  id: string,
+): { id: number } | { response: NextResponse } {
   const value = Number(id);
-  if (!Number.isInteger(value) || value <= 0) return { response: apiError(404, { error: "not_found" }) };
+  if (!Number.isInteger(value) || value <= 0)
+    return { response: apiError(404, { error: "not_found" }) };
   return { id: value };
 }

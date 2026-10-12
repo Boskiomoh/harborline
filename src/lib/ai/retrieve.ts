@@ -7,8 +7,8 @@
  * route handler (cookie-bound server client) and from a plain Node script. Either way the query
  * runs as the signed-in user, so the knowledge_chunks RLS policy (staff only) still applies.
  */
-import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Enums } from "@/lib/supabase/database.types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type KnowledgeSource = {
   id: number;
@@ -31,20 +31,30 @@ export type KnowledgeSource = {
 const MIN_SIMILARITY = 0.78;
 
 /** Text -> 384-dim vector, via the Edge Function. Authenticated as the calling user (staff only). */
-export async function embed(supabase: SupabaseClient<Database>, text: string): Promise<number[]> {
+export async function embed(
+  supabase: SupabaseClient<Database>,
+  text: string,
+): Promise<number[]> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new Error("embed: no session");
 
-  const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/embed`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
-    signal: AbortSignal.timeout(15_000),
-  });
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/embed`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ text }),
+      signal: AbortSignal.timeout(15_000),
+    },
+  );
   if (!response.ok) throw new Error(`embed: ${response.status}`);
   const body = (await response.json()) as { embedding?: number[] };
-  if (!Array.isArray(body.embedding) || body.embedding.length !== 384) throw new Error("embed: bad response");
+  if (!Array.isArray(body.embedding) || body.embedding.length !== 384)
+    throw new Error("embed: bad response");
   return body.embedding;
 }
 
@@ -63,7 +73,10 @@ async function match(
   if (error) throw error;
   return data.map((row) => ({
     id: row.id,
-    kind: row.source_type === "canned_response" ? "canned_response" : "resolved_ticket",
+    kind:
+      row.source_type === "canned_response"
+        ? "canned_response"
+        : "resolved_ticket",
     sourceId: row.source_id,
     ticketId: row.ticket_id ?? null,
     title: row.canned_title ?? null,
@@ -85,13 +98,21 @@ export async function retrieveContext(
   options: { excludeTicketId?: number } = {},
 ): Promise<KnowledgeSource[]> {
   const embedding = await embed(supabase, text);
-  const keep = (s: KnowledgeSource) => options.excludeTicketId === undefined || s.ticketId !== options.excludeTicketId;
+  const keep = (s: KnowledgeSource) =>
+    options.excludeTicketId === undefined ||
+    s.ticketId !== options.excludeTicketId;
   const headroom = k + 4;
 
-  const scoped = (await match(supabase, embedding, category, headroom)).filter(keep);
+  const scoped = (await match(supabase, embedding, category, headroom)).filter(
+    keep,
+  );
   if (scoped.length >= k || !category) return scoped.slice(0, k);
 
   const seen = new Set(scoped.map((s) => s.id));
-  const wider = (await match(supabase, embedding, null, headroom)).filter((s) => keep(s) && !seen.has(s.id));
-  return [...scoped, ...wider].sort((a, b) => b.similarity - a.similarity).slice(0, k);
+  const wider = (await match(supabase, embedding, null, headroom)).filter(
+    (s) => keep(s) && !seen.has(s.id),
+  );
+  return [...scoped, ...wider]
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, k);
 }

@@ -1,7 +1,7 @@
-import { cache } from "react";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { homeForRole, type Role } from "@/lib/roles";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { cache } from "react";
 
 export type Viewer = {
   id: string;

@@ -1,13 +1,21 @@
 "use client";
 
+import useNow from "@/hooks/use-now";
 import { useFormatter } from "next-intl";
-import { useNow } from "./use-now";
+import { FC } from "react";
 
-/**
- * "5 minutes ago", kept fresh on the client. Renders from `serverNow` until hydration
- * finishes, so server and client markup match.
- */
-export function RelativeTime({ date, serverNow, className }: { date: string; serverNow: number; className?: string }) {
+interface RelativeTimeProps {
+  date: string;
+  serverNow: number;
+  className?: string;
+}
+
+// Renders from `serverNow` until hydration finishes, so server and client markup match.
+const RelativeTime: FC<RelativeTimeProps> = ({
+  date,
+  serverNow,
+  className,
+}) => {
   const format = useFormatter();
   const now = useNow() ?? serverNow;
   const value = new Date(date);
@@ -17,4 +25,6 @@ export function RelativeTime({ date, serverNow, className }: { date: string; ser
       {format.relativeTime(value, Math.max(now, value.getTime()))}
     </time>
   );
-}
+};
+
+export { RelativeTime };

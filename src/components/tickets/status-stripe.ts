@@ -1,7 +1,7 @@
 import type { TicketStatus } from "@/lib/sla";
 
-/** Left-edge colour bar used on ticket rows, so status reads at a glance alongside the pill. */
-export function statusStripe(status: TicketStatus) {
+// Left-edge colour bar on ticket rows, so status reads at a glance alongside the pill.
+export const statusStripe = (status: TicketStatus) => {
   switch (status) {
     case "new":
       return "bg-ink-faint";
@@ -12,4 +12,4 @@ export function statusStripe(status: TicketStatus) {
     case "resolved":
       return "bg-accent";
   }
-}
+};

@@ -10,7 +10,10 @@
  * If the free tier feels tight, set `GROQ_MODEL=openai/gpt-oss-20b` rather than going paid.
  */
 
-export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
+export type ChatMessage = {
+  role: "system" | "user" | "assistant";
+  content: string;
+};
 
 /** A JSON Schema the reply must match. Providers enforce it where they can; callers still Zod-parse. */
 export type JsonSchemaSpec = { name: string; schema: Record<string, unknown> };
@@ -25,19 +28,29 @@ export type ChatProvider = {
   name: "groq" | "gemini";
   isConfigured: () => boolean;
   /** JSON mode: resolves to the model's raw JSON text. Throws `AiProviderError` on any failure. */
-  chat: (messages: ChatMessage[], options: ChatOptions & { json: JsonSchemaSpec }) => Promise<string>;
+  chat: (
+    messages: ChatMessage[],
+    options: ChatOptions & { json: JsonSchemaSpec },
+  ) => Promise<string>;
   /**
    * Streaming text. Resolves only once the provider has accepted the request (so a rate limit or
    * outage throws here, before any bytes reach the client, and the caller can still fall back).
    */
-  streamChat: (messages: ChatMessage[], options?: ChatOptions) => Promise<AsyncIterable<string>>;
+  streamChat: (
+    messages: ChatMessage[],
+    options?: ChatOptions,
+  ) => Promise<AsyncIterable<string>>;
 };
 
 export class AiProviderError extends Error {
   readonly provider: ChatProvider["name"];
   readonly status: number | null;
 
-  constructor(provider: ChatProvider["name"], status: number | null, message: string) {
+  constructor(
+    provider: ChatProvider["name"],
+    status: number | null,
+    message: string,
+  ) {
     super(`${provider}: ${message}`);
     this.name = "AiProviderError";
     this.provider = provider;
@@ -60,28 +73,46 @@ async function request(body: Record<string, unknown>, signal?: AbortSignal) {
   try {
     response = await fetch(ENDPOINT, {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         model: model(),
         // gpt-oss models reason before answering; keep that short and out of the output.
-        ...(model().startsWith("openai/gpt-oss") && { reasoning_effort: "low", include_reasoning: false }),
+        ...(model().startsWith("openai/gpt-oss") && {
+          reasoning_effort: "low",
+          include_reasoning: false,
+        }),
         ...body,
       }),
-      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(TIMEOUT_MS)]) : AbortSignal.timeout(TIMEOUT_MS),
+      signal: signal
+        ? AbortSignal.any([signal, AbortSignal.timeout(TIMEOUT_MS)])
+        : AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch (error) {
-    throw new AiProviderError("groq", null, error instanceof Error ? error.message : "network error");
+    throw new AiProviderError(
+      "groq",
+      null,
+      error instanceof Error ? error.message : "network error",
+    );
   }
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
-    throw new AiProviderError("groq", response.status, detail.slice(0, 300) || response.statusText);
+    throw new AiProviderError(
+      "groq",
+      response.status,
+      detail.slice(0, 300) || response.statusText,
+    );
   }
   return response;
 }
 
 /** Parses an OpenAI-style SSE body into content deltas. */
-async function* readSse(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+async function* readSse(
+  body: ReadableStream<Uint8Array>,
+): AsyncGenerator<string> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
@@ -95,8 +126,16 @@ async function* readSse(body: ReadableStream<Uint8Array>): AsyncGenerator<string
       for (const line of lines) {
         const data = line.startsWith("data:") ? line.slice(5).trim() : "";
         if (!data || data === "[DONE]") continue;
-        const parsed = JSON.parse(data) as { choices?: Array<{ delta?: { content?: string } }>; error?: { message?: string } };
-        if (parsed.error) throw new AiProviderError("groq", null, parsed.error.message ?? "stream error");
+        const parsed = JSON.parse(data) as {
+          choices?: Array<{ delta?: { content?: string } }>;
+          error?: { message?: string };
+        };
+        if (parsed.error)
+          throw new AiProviderError(
+            "groq",
+            null,
+            parsed.error.message ?? "stream error",
+          );
         const delta = parsed.choices?.[0]?.delta?.content;
         if (delta) yield delta;
       }
@@ -116,19 +155,32 @@ export const groq: ChatProvider = {
         messages,
         temperature,
         max_completion_tokens: maxTokens,
-        response_format: { type: "json_schema", json_schema: { name: json.name, strict: true, schema: json.schema } },
+        response_format: {
+          type: "json_schema",
+          json_schema: { name: json.name, strict: true, schema: json.schema },
+        },
       },
       signal,
     );
-    const payload = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+    const payload = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
     const content = payload.choices?.[0]?.message?.content;
-    if (!content) throw new AiProviderError("groq", response.status, "empty completion");
+    if (!content)
+      throw new AiProviderError("groq", response.status, "empty completion");
     return content;
   },
 
-  async streamChat(messages, { temperature = 0.4, maxTokens = 1024, signal } = {}) {
-    const response = await request({ messages, temperature, max_completion_tokens: maxTokens, stream: true }, signal);
-    if (!response.body) throw new AiProviderError("groq", response.status, "no response body");
+  async streamChat(
+    messages,
+    { temperature = 0.4, maxTokens = 1024, signal } = {},
+  ) {
+    const response = await request(
+      { messages, temperature, max_completion_tokens: maxTokens, stream: true },
+      signal,
+    );
+    if (!response.body)
+      throw new AiProviderError("groq", response.status, "no response body");
     return readSse(response.body);
   },
 };

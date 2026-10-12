@@ -22,13 +22,19 @@ export default function AppleIcon() {
   );
 
   return new ImageResponse(
-    (
-      <div style={{ width: "100%", height: "100%", display: "flex", position: "relative", background: "#0E5C4C" }}>
-        {block(17, 13, 8, 38, "#FAF5EC")}
-        {block(39, 13, 8, 38, "#FAF5EC")}
-        {block(11, 30, 42, 7, "#D4602A")}
-      </div>
-    ),
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        position: "relative",
+        background: "#0E5C4C",
+      }}
+    >
+      {block(17, 13, 8, 38, "#FAF5EC")}
+      {block(39, 13, 8, 38, "#FAF5EC")}
+      {block(11, 30, 42, 7, "#D4602A")}
+    </div>,
     { ...size },
   );
 }

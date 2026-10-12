@@ -37,7 +37,10 @@ export function getBrowserQueryClient() {
 export function getSessionPersister(): Persister {
   if (typeof window === "undefined") return noopPersister;
   if (!browserPersister) {
-    const inner = createAsyncStoragePersister({ storage: window.sessionStorage, key: PERSIST_KEY });
+    const inner = createAsyncStoragePersister({
+      storage: window.sessionStorage,
+      key: PERSIST_KEY,
+    });
     browserPersister = {
       ...inner,
       persistClient: (client) => {

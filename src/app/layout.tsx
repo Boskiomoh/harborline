@@ -1,9 +1,13 @@
+import QueryProvider from "@/components/providers/query-provider";
+import { ToastProvider } from "@/components/ui/toaster";
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, JetBrains_Mono, Public_Sans } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
-import { QueryProvider } from "@/components/providers/query-provider";
-import { ToastProvider } from "@/components/ui/toaster";
+import {
+  Bricolage_Grotesque,
+  JetBrains_Mono,
+  Public_Sans,
+} from "next/font/google";
 import "./globals.css";
 
 // next/font downloads these at build time and serves them from the app: no runtime Google Fonts request.
@@ -44,7 +48,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const locale = await getLocale();
 
   return (
-    <html lang={locale} data-scroll-behavior="smooth" className={`${display.variable} ${sans.variable} ${mono.variable}`}>
+    <html
+      lang={locale}
+      data-scroll-behavior="smooth"
+      className={`${display.variable} ${sans.variable} ${mono.variable}`}
+    >
       <body className="min-h-dvh">
         <NextIntlClientProvider>
           <QueryProvider>

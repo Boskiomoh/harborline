@@ -8,8 +8,9 @@ const listeners = new Set<() => void>();
 let current = typeof window === "undefined" ? 0 : Date.now();
 let timer: ReturnType<typeof setInterval> | undefined;
 
-function subscribe(listener: () => void) {
+const subscribe = (listener: () => void) => {
   listeners.add(listener);
+
   if (!timer) {
     current = Date.now();
     timer = setInterval(() => {
@@ -17,22 +18,26 @@ function subscribe(listener: () => void) {
       listeners.forEach((l) => l());
     }, 1000);
   }
+
   // Swap from the server snapshot to live time right after hydration, not a second later.
   queueMicrotask(listener);
+
   return () => {
     listeners.delete(listener);
+
     if (listeners.size === 0 && timer) {
       clearInterval(timer);
       timer = undefined;
     }
   };
-}
+};
 
-/** Current time, ticking each second. `null` during SSR and hydration so markup matches. */
-export function useNow(): number | null {
-  return useSyncExternalStore(
+// `null` during SSR and hydration so server and client markup match.
+const useNow = (): number | null =>
+  useSyncExternalStore(
     subscribe,
     () => current,
     () => null,
   );
-}
+
+export default useNow;

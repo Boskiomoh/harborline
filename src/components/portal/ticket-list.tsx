@@ -1,35 +1,52 @@
 "use client";
 
+import { statusStripe } from "@/components/tickets/status-stripe";
+import { buttonClass } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { RelativeTime } from "@/components/ui/relative-time";
+import { StatusPill } from "@/components/ui/status-pill";
+import { useMyTickets } from "@/hooks/use-app-hooks/use-tickets";
+import { cn } from "@/lib/cn";
+import type { MyTicketRow } from "@/lib/tickets";
+import { Plus, Tray } from "@phosphor-icons/react/dist/ssr";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
-import { Plus, Tray } from "@phosphor-icons/react/dist/ssr";
-import { buttonClass } from "@/components/ui/button";
-import { StatusPill } from "@/components/ui/status-pill";
-import { RelativeTime } from "@/components/ui/relative-time";
-import { EmptyState } from "@/components/ui/empty-state";
-import { statusStripe } from "@/components/tickets/status-stripe";
-import { useMyTicketsQuery } from "@/lib/queries/tickets";
-import { cn } from "@/lib/cn";
+import { FC } from "react";
 
-export function PortalTicketList({ serverNow }: { serverNow: number }) {
+interface PortalTicketListProps {
+  serverNow: number;
+}
+
+const PortalTicketList: FC<PortalTicketListProps> = ({ serverNow }) => {
   const t = useTranslations();
-  // Hydrated from the server prefetch in portal/page.tsx: resolves from cache, no request on mount.
-  const { data } = useMyTicketsQuery();
-  const tickets = data ?? [];
-  const view = useSearchParams().get("tab") === "resolved" ? "resolved" : "open";
 
+  // Router
+  const searchParams = useSearchParams();
+  const view = searchParams.get("tab") === "resolved" ? "resolved" : "open";
+
+  // Queries
+  const { data: myTicketsData } = useMyTickets();
+
+  // Derived
+  const tickets: MyTicketRow[] = myTicketsData ?? [];
   // Tickets that need the customer float to the top of the open list.
   const open = tickets
     .filter((ticket) => ticket.status !== "resolved")
-    .sort((a, b) => Number(b.status === "waiting_on_customer") - Number(a.status === "waiting_on_customer"));
+    .sort(
+      (a, b) =>
+        Number(b.status === "waiting_on_customer") -
+        Number(a.status === "waiting_on_customer"),
+    );
   const resolved = tickets.filter((ticket) => ticket.status === "resolved");
   const shown = view === "open" ? open : resolved;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8 lg:py-12">
       <header className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="font-display text-4xl font-semibold tracking-[-0.03em] text-ink [font-variation-settings:'wdth'_86]">{t("portal.list.title")}</h1>
+        <h1 className="font-display text-4xl font-semibold tracking-[-0.03em] text-ink [font-variation-settings:'wdth'_86]">
+          {t("portal.list.title")}
+        </h1>
         <Link href="/portal/new" className={buttonClass()}>
           <Plus aria-hidden weight="bold" className="size-4" />
           {t("portal.list.newTicket")}
@@ -50,10 +67,14 @@ export function PortalTicketList({ serverNow }: { serverNow: number }) {
         />
       ) : (
         <>
-          <nav aria-label={t("portal.list.tabsLabel")} className="mt-8 inline-flex rounded-full border border-border bg-surface p-1 shadow-soft">
+          <nav
+            aria-label={t("portal.list.tabsLabel")}
+            className="mt-8 inline-flex rounded-full border border-border bg-surface p-1 shadow-soft"
+          >
             {(["open", "resolved"] as const).map((key) => {
               const count = key === "open" ? open.length : resolved.length;
               const active = view === key;
+
               return (
                 <Link
                   key={key}
@@ -61,11 +82,20 @@ export function PortalTicketList({ serverNow }: { serverNow: number }) {
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "inline-flex h-9 items-center gap-2 rounded-full px-4 text-sm transition-colors",
-                    active ? "bg-accent-soft font-semibold text-accent-ink" : "text-ink-soft hover:text-ink",
+                    active
+                      ? "bg-accent-soft font-semibold text-accent-ink"
+                      : "text-ink-soft hover:text-ink",
                   )}
                 >
                   {t(`portal.list.${key}`)}
-                  <span className={cn("font-mono text-xs", active ? "text-accent-ink" : "text-ink-soft")}>{count}</span>
+                  <span
+                    className={cn(
+                      "font-mono text-xs",
+                      active ? "text-accent-ink" : "text-ink-soft",
+                    )}
+                  >
+                    {count}
+                  </span>
                 </Link>
               );
             })}
@@ -74,8 +104,16 @@ export function PortalTicketList({ serverNow }: { serverNow: number }) {
           {shown.length === 0 ? (
             <EmptyState
               className="mt-6"
-              title={t(view === "open" ? "portal.list.emptyOpen.title" : "portal.list.emptyResolved.title")}
-              body={t(view === "open" ? "portal.list.emptyOpen.body" : "portal.list.emptyResolved.body")}
+              title={t(
+                view === "open"
+                  ? "portal.list.emptyOpen.title"
+                  : "portal.list.emptyResolved.title",
+              )}
+              body={t(
+                view === "open"
+                  ? "portal.list.emptyOpen.body"
+                  : "portal.list.emptyResolved.body",
+              )}
             />
           ) : (
             <ul className="mt-6 grid gap-3">
@@ -91,15 +129,29 @@ export function PortalTicketList({ serverNow }: { serverNow: number }) {
                         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-soft">
                           <span className="font-mono">#{ticket.id}</span>
                           <span>{t(`category.${ticket.category}`)}</span>
-                          {ticket.order_reference && <span className="font-mono">{ticket.order_reference}</span>}
+                          {ticket.order_reference && (
+                            <span className="font-mono">
+                              {ticket.order_reference}
+                            </span>
+                          )}
                         </p>
-                        <p className="mt-1 truncate text-base font-semibold text-ink group-hover:text-accent-ink">{ticket.subject}</p>
+                        <p className="mt-1 truncate text-base font-semibold text-ink group-hover:text-accent-ink">
+                          {ticket.subject}
+                        </p>
                       </div>
                       <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:gap-1.5">
-                        <StatusPill status={ticket.status} audience="customer" />
+                        <StatusPill
+                          status={ticket.status}
+                          audience="customer"
+                        />
                         <span className="text-xs text-ink-soft">
                           {t.rich("portal.list.updated", {
-                            time: () => <RelativeTime date={ticket.updated_at} serverNow={serverNow} />,
+                            time: () => (
+                              <RelativeTime
+                                date={ticket.updated_at}
+                                serverNow={serverNow}
+                              />
+                            ),
                           })}
                         </span>
                       </div>
@@ -113,4 +165,6 @@ export function PortalTicketList({ serverNow }: { serverNow: number }) {
       )}
     </div>
   );
-}
+};
+
+export default PortalTicketList;

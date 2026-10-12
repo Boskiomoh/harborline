@@ -16,16 +16,30 @@ function model() {
 
 /** Gemini takes the system prompt separately and calls the assistant role "model". */
 function toGemini(messages: ChatMessage[]) {
-  const system = messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n");
+  const system = messages
+    .filter((m) => m.role === "system")
+    .map((m) => m.content)
+    .join("\n\n");
   const contents = messages
     .filter((m) => m.role !== "system")
-    .map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
-  return { ...(system && { systemInstruction: { parts: [{ text: system }] } }), contents };
+    .map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    }));
+  return {
+    ...(system && { systemInstruction: { parts: [{ text: system }] } }),
+    contents,
+  };
 }
 
-async function request(path: string, body: Record<string, unknown>, signal?: AbortSignal) {
+async function request(
+  path: string,
+  body: Record<string, unknown>,
+  signal?: AbortSignal,
+) {
   const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new AiProviderError("gemini", null, "GEMINI_API_KEY is not set");
+  if (!key)
+    throw new AiProviderError("gemini", null, "GEMINI_API_KEY is not set");
 
   let response: Response;
   try {
@@ -33,26 +47,42 @@ async function request(path: string, body: Record<string, unknown>, signal?: Abo
       method: "POST",
       headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
       body: JSON.stringify(body),
-      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(TIMEOUT_MS)]) : AbortSignal.timeout(TIMEOUT_MS),
+      signal: signal
+        ? AbortSignal.any([signal, AbortSignal.timeout(TIMEOUT_MS)])
+        : AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch (error) {
-    throw new AiProviderError("gemini", null, error instanceof Error ? error.message : "network error");
+    throw new AiProviderError(
+      "gemini",
+      null,
+      error instanceof Error ? error.message : "network error",
+    );
   }
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
-    throw new AiProviderError("gemini", response.status, detail.slice(0, 300) || response.statusText);
+    throw new AiProviderError(
+      "gemini",
+      response.status,
+      detail.slice(0, 300) || response.statusText,
+    );
   }
   return response;
 }
 
-type GeminiChunk = { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+type GeminiChunk = {
+  candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+};
 
 function textOf(chunk: GeminiChunk) {
-  return (chunk.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? "").join("");
+  return (chunk.candidates?.[0]?.content?.parts ?? [])
+    .map((p) => p.text ?? "")
+    .join("");
 }
 
-async function* readSse(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+async function* readSse(
+  body: ReadableStream<Uint8Array>,
+): AsyncGenerator<string> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
@@ -95,17 +125,29 @@ export const gemini: ChatProvider = {
       signal,
     );
     const content = textOf((await response.json()) as GeminiChunk);
-    if (!content) throw new AiProviderError("gemini", response.status, "empty completion");
+    if (!content)
+      throw new AiProviderError("gemini", response.status, "empty completion");
     return content;
   },
 
-  async streamChat(messages, { temperature = 0.4, maxTokens = 1024, signal } = {}) {
+  async streamChat(
+    messages,
+    { temperature = 0.4, maxTokens = 1024, signal } = {},
+  ) {
     const response = await request(
       "streamGenerateContent?alt=sse",
-      { ...toGemini(messages), generationConfig: { temperature, maxOutputTokens: maxTokens, thinkingConfig: { thinkingBudget: 0 } } },
+      {
+        ...toGemini(messages),
+        generationConfig: {
+          temperature,
+          maxOutputTokens: maxTokens,
+          thinkingConfig: { thinkingBudget: 0 },
+        },
+      },
       signal,
     );
-    if (!response.body) throw new AiProviderError("gemini", response.status, "no response body");
+    if (!response.body)
+      throw new AiProviderError("gemini", response.status, "no response body");
     return readSse(response.body);
   },
 };

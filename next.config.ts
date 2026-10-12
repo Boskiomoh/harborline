@@ -3,7 +3,9 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = createNextIntlPlugin();
 
-const supabase = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://localhost").host;
+const supabase = new URL(
+  process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://localhost",
+).host;
 const isDev = process.env.NODE_ENV !== "production";
 
 // Static CSP. Next's inline bootstrap needs 'unsafe-inline' for scripts; a nonce via proxy.ts
@@ -27,10 +29,14 @@ const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), browsing-topics=()" },
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), geolocation=(), browsing-topics=()",
+  },
 ];
 
 const nextConfig: NextConfig = {
+  reactCompiler: true,
   // The dev-only route indicator sat on top of the sidebar account block.
   // Compile and runtime errors still surface in development without it.
   devIndicators: false,

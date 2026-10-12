@@ -6,7 +6,13 @@
  */
 import { z } from "zod";
 import { gemini } from "./gemini";
-import { groq, type ChatMessage, type ChatOptions, type ChatProvider, type JsonSchemaSpec } from "./groq";
+import {
+  groq,
+  type ChatMessage,
+  type ChatOptions,
+  type ChatProvider,
+  type JsonSchemaSpec,
+} from "./groq";
 
 export class AiUnavailableError extends Error {
   constructor(message = "No AI provider is available") {
@@ -36,9 +42,15 @@ export async function chatJson<T extends z.ZodType>(
       const raw = await provider.chat(messages, options);
       const parsed = schema.safeParse(JSON.parse(raw));
       if (parsed.success) return { data: parsed.data, provider: provider.name };
-      console.error(`[ai] ${provider.name} returned JSON that failed validation`, parsed.error.issues);
+      console.error(
+        `[ai] ${provider.name} returned JSON that failed validation`,
+        parsed.error.issues,
+      );
     } catch (error) {
-      console.error(`[ai] ${provider.name} chat failed`, error instanceof Error ? error.message : error);
+      console.error(
+        `[ai] ${provider.name} chat failed`,
+        error instanceof Error ? error.message : error,
+      );
     }
   }
   throw new AiUnavailableError();
@@ -51,9 +63,15 @@ export async function streamChat(
 ): Promise<{ stream: AsyncIterable<string>; provider: ChatProvider["name"] }> {
   for (const provider of configured()) {
     try {
-      return { stream: await provider.streamChat(messages, options), provider: provider.name };
+      return {
+        stream: await provider.streamChat(messages, options),
+        provider: provider.name,
+      };
     } catch (error) {
-      console.error(`[ai] ${provider.name} stream failed`, error instanceof Error ? error.message : error);
+      console.error(
+        `[ai] ${provider.name} stream failed`,
+        error instanceof Error ? error.message : error,
+      );
     }
   }
   throw new AiUnavailableError();

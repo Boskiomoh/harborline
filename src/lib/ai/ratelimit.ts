@@ -23,7 +23,9 @@ const DEFAULT_ACCOUNT_LIMIT = 300;
 const TIMEOUT_MS = 1500;
 const TTL_SECONDS = String(26 * 60 * 60); // outlives its own day, whatever the clock skew
 
-export type RateLimitResult = { allowed: true; remaining: number | null } | { allowed: false; limit: number; resetAt: string };
+export type RateLimitResult =
+  | { allowed: true; remaining: number | null }
+  | { allowed: false; limit: number; resetAt: string };
 
 let loggedFailure = false;
 
@@ -33,18 +35,26 @@ function envLimit(name: string, fallback: number) {
 }
 
 function nextUtcMidnight(now: Date) {
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1),
+  );
 }
 
 /** Only IP characters make it into a Redis key. */
 function ipKey(clientIp: string | null | undefined) {
-  const clean = (clientIp ?? "").trim().replace(/[^0-9a-fA-F:.]/g, "").slice(0, 45);
+  const clean = (clientIp ?? "")
+    .trim()
+    .replace(/[^0-9a-fA-F:.]/g, "")
+    .slice(0, 45);
   return clean || "unknown";
 }
 
 type PipelineReply = Array<{ result?: unknown; error?: string }>;
 
-export async function checkAiRateLimit(userId: string, clientIp?: string | null): Promise<RateLimitResult> {
+export async function checkAiRateLimit(
+  userId: string,
+  clientIp?: string | null,
+): Promise<RateLimitResult> {
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!url || !token) return { allowed: true, remaining: null };
@@ -52,14 +62,20 @@ export async function checkAiRateLimit(userId: string, clientIp?: string | null)
   const now = new Date();
   const day = now.toISOString().slice(0, 10);
   const visitorLimit = envLimit("AI_DAILY_LIMIT", DEFAULT_VISITOR_LIMIT);
-  const accountLimit = envLimit("AI_ACCOUNT_DAILY_LIMIT", DEFAULT_ACCOUNT_LIMIT);
+  const accountLimit = envLimit(
+    "AI_ACCOUNT_DAILY_LIMIT",
+    DEFAULT_ACCOUNT_LIMIT,
+  );
   const visitorKey = `harborline:ai:${userId}:${ipKey(clientIp)}:${day}`;
   const accountKey = `harborline:ai:${userId}:${day}`;
 
   try {
     const response = await fetch(`${url.replace(/\/$/, "")}/pipeline`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify([
         ["INCR", visitorKey],
         ["EXPIRE", visitorKey, TTL_SECONDS, "NX"],
@@ -75,19 +91,33 @@ export async function checkAiRateLimit(userId: string, clientIp?: string | null)
     const visitor = reply[0];
     const account = reply[2];
     for (const incr of [visitor, account]) {
-      if (incr?.error || typeof incr?.result !== "number") throw new Error(`Upstash INCR failed: ${incr?.error ?? "unexpected reply"}`);
+      if (incr?.error || typeof incr?.result !== "number")
+        throw new Error(
+          `Upstash INCR failed: ${incr?.error ?? "unexpected reply"}`,
+        );
     }
     const visitorCount = visitor.result as number;
     const accountCount = account.result as number;
 
     const resetAt = nextUtcMidnight(now).toISOString();
-    if (visitorCount > visitorLimit) return { allowed: false, limit: visitorLimit, resetAt };
-    if (accountCount > accountLimit) return { allowed: false, limit: accountLimit, resetAt };
-    return { allowed: true, remaining: Math.min(visitorLimit - visitorCount, accountLimit - accountCount) };
+    if (visitorCount > visitorLimit)
+      return { allowed: false, limit: visitorLimit, resetAt };
+    if (accountCount > accountLimit)
+      return { allowed: false, limit: accountLimit, resetAt };
+    return {
+      allowed: true,
+      remaining: Math.min(
+        visitorLimit - visitorCount,
+        accountLimit - accountCount,
+      ),
+    };
   } catch (error) {
     if (!loggedFailure) {
       loggedFailure = true;
-      console.error("[ai] rate limiter unavailable, failing open:", error instanceof Error ? error.message : error);
+      console.error(
+        "[ai] rate limiter unavailable, failing open:",
+        error instanceof Error ? error.message : error,
+      );
     }
     return { allowed: true, remaining: null };
   }

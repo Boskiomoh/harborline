@@ -1,6 +1,11 @@
-import { describe, expect, it } from "vitest";
-import { customerMessages, draftThread, formatThread, summaryThread } from "@/lib/ai/thread";
+import {
+  customerMessages,
+  draftThread,
+  formatThread,
+  summaryThread,
+} from "@/lib/ai/thread";
 import type { People, TicketMessage } from "@/lib/tickets";
+import { describe, expect, it } from "vitest";
 
 const CUSTOMER = "00000000-0000-4000-8000-000000000001";
 const AGENT = "00000000-0000-4000-8000-000000000002";
@@ -10,8 +15,20 @@ const people: People = {
   [AGENT]: { id: AGENT, fullName: "Tomás Reyes", role: "agent" },
 };
 
-function message(id: number, author: string, body: string, internal = false): TicketMessage {
-  return { id, ticket_id: 1001, author_id: author, body, is_internal_note: internal, created_at: `2026-09-20T10:0${id}:00+00:00` };
+function message(
+  id: number,
+  author: string,
+  body: string,
+  internal = false,
+): TicketMessage {
+  return {
+    id,
+    ticket_id: 1001,
+    author_id: author,
+    body,
+    is_internal_note: internal,
+    created_at: `2026-09-20T10:0${id}:00+00:00`,
+  };
 }
 
 const thread = [
@@ -29,8 +46,12 @@ describe("which messages each AI feature may read", () => {
   });
 
   it("summaries include internal notes for staff viewers", () => {
-    expect(summaryThread(thread, "agent").map((m) => m.id)).toEqual([1, 2, 3, 4]);
-    expect(summaryThread(thread, "admin").some((m) => m.is_internal_note)).toBe(true);
+    expect(summaryThread(thread, "agent").map((m) => m.id)).toEqual([
+      1, 2, 3, 4,
+    ]);
+    expect(summaryThread(thread, "admin").some((m) => m.is_internal_note)).toBe(
+      true,
+    );
   });
 
   it("summaries drop internal notes for a customer viewer", () => {

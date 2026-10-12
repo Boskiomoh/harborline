@@ -1,56 +1,79 @@
 "use client";
 
-import { useState } from "react";
-import { useTranslations } from "next-intl";
-import { CheckCircle, Timer, Warning } from "@phosphor-icons/react/dist/ssr";
+import useNow from "@/hooks/use-now";
 import { cn } from "@/lib/cn";
-import { computeSla, durationParts, remainingFraction, type TicketStatus } from "@/lib/sla";
-import { useNow } from "./use-now";
+import {
+  computeSla,
+  durationParts,
+  remainingFraction,
+  type TicketStatus,
+} from "@/lib/sla";
+import { CheckCircle, Timer, Warning } from "@phosphor-icons/react/dist/ssr";
+import { useTranslations } from "next-intl";
+import { FC, useState } from "react";
 
-type Props = {
+interface SlaBadgeProps {
   targetMinutes: number;
   status: TicketStatus;
   createdAt?: string;
   firstResponseAt?: string | null;
-  /** For static previews: the clock started this many minutes before the component mounted. */
+  // For static previews: the clock started this many minutes before the component mounted.
   startedMinutesAgo?: number;
-  /** Request time from the server, used until hydration so the first render matches. */
+  // Request time from the server, used until hydration so the first render matches.
   serverNow?: number;
-  /** Only show the badge while the clock is running or overdue (used in dense lists). */
+  // Only show the badge while the clock is running or overdue (used in dense lists).
   hideSettled?: boolean;
   size?: "sm" | "md";
   className?: string;
-};
+}
 
 // Time left drives the colour: green with the full window, through amber and coral, to red at zero.
-const STOPS = [
+const stops = [
   { at: 0, color: "var(--danger)" },
   { at: 0.2, color: "var(--warm)" },
   { at: 0.5, color: "var(--warning)" },
   { at: 1, color: "var(--success)" },
 ] as const;
 
-function colorForRemaining(fraction: number) {
+const colorForRemaining = (fraction: number) => {
   const f = Math.min(1, Math.max(0, fraction));
-  for (let i = 1; i < STOPS.length; i++) {
-    const lo = STOPS[i - 1];
-    const hi = STOPS[i];
+
+  for (let i = 1; i < stops.length; i++) {
+    const lo = stops[i - 1];
+    const hi = stops[i];
+
     if (f <= hi.at) {
       const share = Math.round(((f - lo.at) / (hi.at - lo.at)) * 100);
+
       return `color-mix(in oklab, ${hi.color} ${share}%, ${lo.color})`;
     }
   }
-  return STOPS[STOPS.length - 1].color;
-}
 
-export function SlaBadge({ targetMinutes, status, createdAt, firstResponseAt, startedMinutesAgo, serverNow, hideSettled, size = "md", className }: Props) {
+  return stops[stops.length - 1].color;
+};
+
+const SlaBadge: FC<SlaBadgeProps> = ({
+  targetMinutes,
+  status,
+  createdAt,
+  firstResponseAt,
+  startedMinutesAgo,
+  serverNow,
+  hideSettled,
+  size = "md",
+  className,
+}) => {
   const t = useTranslations("sla");
   const td = useTranslations("duration");
   const now = useNow() ?? serverNow ?? null;
+
+  // State
   const [mountedAt] = useState(() => Date.now());
 
+  // Handlers
   const format = (ms: number) => {
     const { key, values } = durationParts(ms);
+
     return td(key, values);
   };
 
@@ -62,22 +85,37 @@ export function SlaBadge({ targetMinutes, status, createdAt, firstResponseAt, st
 
   if (now === null) {
     return (
-      <span className={cn(boxClass, "border-border bg-surface-alt text-ink-soft")}>
+      <span
+        className={cn(boxClass, "border-border bg-surface-alt text-ink-soft")}
+      >
         <span className="sr-only">{t("loading")}</span>
         <span aria-hidden className="inline-block w-20" />
       </span>
     );
   }
 
-  const created = startedMinutesAgo !== undefined ? mountedAt - startedMinutesAgo * 60_000 : (createdAt ?? now);
-  const state = computeSla({ createdAt: created, targetMinutes, firstResponseAt, status }, now);
+  const created =
+    startedMinutesAgo !== undefined
+      ? mountedAt - startedMinutesAgo * 60_000
+      : (createdAt ?? now);
+  const state = computeSla(
+    { createdAt: created, targetMinutes, firstResponseAt, status },
+    now,
+  );
+
   if (state.kind === "none") return null;
-  if (hideSettled && (state.kind === "met" || state.kind === "missed")) return null;
+  if (hideSettled && (state.kind === "met" || state.kind === "missed")) {
+    return null;
+  }
 
   const target = format(state.targetMs);
   const fraction = remainingFraction(state);
   const color =
-    state.kind === "met" ? "var(--success)" : state.kind === "missed" ? "var(--warm)" : colorForRemaining(fraction ?? 0);
+    state.kind === "met"
+      ? "var(--success)"
+      : state.kind === "missed"
+        ? "var(--warm)"
+        : colorForRemaining(fraction ?? 0);
 
   let label: string;
   let aria: string;
@@ -101,13 +139,17 @@ export function SlaBadge({ targetMinutes, status, createdAt, firstResponseAt, st
     case "missed": {
       const time = format(state.responseMs);
       label = t(state.kind, { time });
-      aria = t(state.kind === "met" ? "ariaMet" : "ariaMissed", { time, target });
+      aria = t(state.kind === "met" ? "ariaMet" : "ariaMissed", {
+        time,
+        target,
+      });
       Icon = state.kind === "met" ? CheckCircle : Warning;
       break;
     }
   }
 
-  const tint = (amount: number) => `color-mix(in oklab, ${color} ${amount}%, var(--surface))`;
+  const tint = (amount: number) =>
+    `color-mix(in oklab, ${color} ${amount}%, var(--surface))`;
 
   // The badge itself is the gauge: the filled part of the pill is the time still left,
   // draining to an empty pill at the deadline.
@@ -130,10 +172,17 @@ export function SlaBadge({ targetMinutes, status, createdAt, firstResponseAt, st
         />
       )}
       <span className="relative flex items-center gap-1.5">
-        <Icon aria-hidden weight={state.kind === "running" ? "bold" : "fill"} className={size === "sm" ? "size-3.5" : "size-4"} style={{ color }} />
+        <Icon
+          aria-hidden
+          weight={state.kind === "running" ? "bold" : "fill"}
+          className={size === "sm" ? "size-3.5" : "size-4"}
+          style={{ color }}
+        />
         <span aria-hidden>{label}</span>
       </span>
       <span className="sr-only">{aria}</span>
     </span>
   );
-}
+};
+
+export { SlaBadge };

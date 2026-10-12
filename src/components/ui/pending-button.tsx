@@ -1,18 +1,39 @@
 "use client";
 
-import { useFormStatus } from "react-dom";
 import { SpinnerGap } from "@phosphor-icons/react/dist/ssr";
+import { FC, type ComponentProps } from "react";
+import { useFormStatus } from "react-dom";
 
-type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & { pendingLabel?: string };
+interface PendingButtonProps extends ComponentProps<"button"> {
+  pendingLabel?: string;
+}
 
-/** Submit button for server-action forms: disables itself and shows progress while the action runs. */
-export function PendingButton({ children, pendingLabel, disabled, ...props }: Props) {
+// Submit button for server-action forms: disables itself while the action runs.
+const PendingButton: FC<PendingButtonProps> = ({
+  children,
+  pendingLabel,
+  disabled,
+  ...props
+}) => {
   const { pending } = useFormStatus();
 
   return (
-    <button type="submit" {...props} disabled={disabled || pending} aria-busy={pending || undefined}>
-      {pending && <SpinnerGap aria-hidden weight="bold" className="size-4 animate-spin motion-reduce:animate-none" />}
+    <button
+      type="submit"
+      {...props}
+      disabled={disabled || pending}
+      aria-busy={pending || undefined}
+    >
+      {pending && (
+        <SpinnerGap
+          aria-hidden
+          weight="bold"
+          className="size-4 animate-spin motion-reduce:animate-none"
+        />
+      )}
       {pending && pendingLabel ? pendingLabel : children}
     </button>
   );
-}
+};
+
+export { PendingButton };

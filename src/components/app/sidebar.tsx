@@ -1,19 +1,36 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { CaretDoubleLeft, CaretDoubleRight } from "@phosphor-icons/react/dist/ssr";
-import { LogoMark } from "@/components/brand/logo-mark";
-import { Wordmark } from "@/components/brand/wordmark";
+import SignOutButton from "@/components/app/sign-out-button";
+import LogoMark from "@/components/brand/logo-mark";
+import Wordmark from "@/components/brand/wordmark";
 import { Avatar } from "@/components/ui/avatar";
-import { SignOutButton } from "@/components/app/sign-out-button";
-import { SIDEBAR_COOKIE } from "@/lib/sidebar";
 import { cn } from "@/lib/cn";
-import { AppNav, type NavItem } from "./app-nav";
+import { SIDEBAR_COOKIE } from "@/lib/sidebar";
+import {
+  CaretDoubleLeft,
+  CaretDoubleRight,
+} from "@phosphor-icons/react/dist/ssr";
+import Link from "next/link";
+import { FC, useState } from "react";
+import AppNav, { type NavItem } from "./app-nav";
 
-type Labels = { nav: string; home: string; collapse: string; expand: string; signOut: string };
+interface SidebarProps {
+  items: NavItem[];
+  homeHref: string;
+  fullName: string;
+  roleLabel: string;
+  tone: "customer" | "staff";
+  initialCollapsed: boolean;
+  labels: {
+    nav: string;
+    home: string;
+    collapse: string;
+    expand: string;
+    signOut: string;
+  };
+}
 
-export function Sidebar({
+const Sidebar: FC<SidebarProps> = ({
   items,
   homeHref,
   fullName,
@@ -21,25 +38,21 @@ export function Sidebar({
   tone,
   initialCollapsed,
   labels,
-}: {
-  items: NavItem[];
-  homeHref: string;
-  fullName: string;
-  roleLabel: string;
-  tone: "customer" | "staff";
-  initialCollapsed: boolean;
-  labels: Labels;
-}) {
+}) => {
+  // State
   const [collapsed, setCollapsed] = useState(initialCollapsed);
 
-  const toggle = () => {
+  // Derived
+  const toggleLabel = collapsed ? labels.expand : labels.collapse;
+  const ToggleIcon = collapsed ? CaretDoubleRight : CaretDoubleLeft;
+
+  // Handlers
+  const handleToggle = () => {
     const next = !collapsed;
+
     setCollapsed(next);
     document.cookie = `${SIDEBAR_COOKIE}=${next ? "collapsed" : "expanded"}; path=/; max-age=31536000; samesite=lax`;
   };
-
-  const toggleLabel = collapsed ? labels.expand : labels.collapse;
-  const ToggleIcon = collapsed ? CaretDoubleRight : CaretDoubleLeft;
 
   return (
     <aside
@@ -49,13 +62,22 @@ export function Sidebar({
         collapsed ? "w-[4.5rem] px-2" : "w-60 px-3",
       )}
     >
-      <div className={cn("flex items-center", collapsed ? "flex-col gap-3" : "justify-between gap-2 pl-1")}>
-        <Link href={homeHref} aria-label={labels.home} className="rounded-[8px] p-1">
+      <div
+        className={cn(
+          "flex items-center",
+          collapsed ? "flex-col gap-3" : "justify-between gap-2 pl-1",
+        )}
+      >
+        <Link
+          href={homeHref}
+          aria-label={labels.home}
+          className="rounded-[8px] p-1"
+        >
           {collapsed ? <LogoMark className="size-8" /> : <Wordmark />}
         </Link>
         <button
           type="button"
-          onClick={toggle}
+          onClick={handleToggle}
           aria-controls="app-sidebar"
           aria-expanded={!collapsed}
           aria-label={toggleLabel}
@@ -66,10 +88,20 @@ export function Sidebar({
         </button>
       </div>
 
-      <AppNav items={items} label={labels.nav} collapsed={collapsed} className="mt-8" />
+      <AppNav
+        items={items}
+        label={labels.nav}
+        collapsed={collapsed}
+        className="mt-8"
+      />
 
       <div className="mt-auto border-t border-border pt-3">
-        <div className={cn("flex items-center rounded-[8px] py-2", collapsed ? "flex-col gap-2" : "gap-3 px-2")}>
+        <div
+          className={cn(
+            "flex items-center rounded-[8px] py-2",
+            collapsed ? "flex-col gap-2" : "gap-3 px-2",
+          )}
+        >
           <span title={collapsed ? `${fullName}, ${roleLabel}` : undefined}>
             <Avatar name={fullName} tone={tone} />
           </span>
@@ -79,7 +111,9 @@ export function Sidebar({
             </span>
           ) : (
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-ink">{fullName}</p>
+              <p className="truncate text-sm font-semibold text-ink">
+                {fullName}
+              </p>
               <p className="truncate text-xs text-ink-soft">{roleLabel}</p>
             </div>
           )}
@@ -88,4 +122,6 @@ export function Sidebar({
       </div>
     </aside>
   );
-}
+};
+
+export default Sidebar;

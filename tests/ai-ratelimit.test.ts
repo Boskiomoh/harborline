@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { checkAiRateLimit } from "@/lib/ai/ratelimit";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // docs/AI-ASSIST.md step G. These talk to the real Upstash database from .env.local, with a
 // throwaway user id per run so they never touch a real viewer's counter.
@@ -16,12 +16,21 @@ afterEach(() => {
 
 describe("checkAiRateLimit", () => {
   it("blocks once a viewer passes the daily cap", async () => {
-    if (!saved.UPSTASH_REDIS_REST_URL) throw new Error("UPSTASH_REDIS_REST_URL is not set — this test needs .env.local");
+    if (!saved.UPSTASH_REDIS_REST_URL)
+      throw new Error(
+        "UPSTASH_REDIS_REST_URL is not set — this test needs .env.local",
+      );
     process.env.AI_DAILY_LIMIT = "2";
     const user = `test-${crypto.randomUUID()}`;
 
-    expect(await checkAiRateLimit(user)).toEqual({ allowed: true, remaining: 1 });
-    expect(await checkAiRateLimit(user)).toEqual({ allowed: true, remaining: 0 });
+    expect(await checkAiRateLimit(user)).toEqual({
+      allowed: true,
+      remaining: 1,
+    });
+    expect(await checkAiRateLimit(user)).toEqual({
+      allowed: true,
+      remaining: 0,
+    });
 
     const third = await checkAiRateLimit(user);
     expect(third.allowed).toBe(false);
@@ -32,7 +41,10 @@ describe("checkAiRateLimit", () => {
   });
 
   it("counts each visitor on a shared account separately, under an account-wide ceiling", async () => {
-    if (!saved.UPSTASH_REDIS_REST_URL) throw new Error("UPSTASH_REDIS_REST_URL is not set — this test needs .env.local");
+    if (!saved.UPSTASH_REDIS_REST_URL)
+      throw new Error(
+        "UPSTASH_REDIS_REST_URL is not set — this test needs .env.local",
+      );
     process.env.AI_DAILY_LIMIT = "1";
     process.env.AI_ACCOUNT_DAILY_LIMIT = "2";
     const user = `test-${crypto.randomUUID()}`;
@@ -43,7 +55,10 @@ describe("checkAiRateLimit", () => {
   });
 
   it("gives a second visitor their own allowance", async () => {
-    if (!saved.UPSTASH_REDIS_REST_URL) throw new Error("UPSTASH_REDIS_REST_URL is not set — this test needs .env.local");
+    if (!saved.UPSTASH_REDIS_REST_URL)
+      throw new Error(
+        "UPSTASH_REDIS_REST_URL is not set — this test needs .env.local",
+      );
     process.env.AI_DAILY_LIMIT = "1";
     process.env.AI_ACCOUNT_DAILY_LIMIT = "10";
     const user = `test-${crypto.randomUUID()}`;
@@ -59,7 +74,10 @@ describe("checkAiRateLimit", () => {
     process.env.AI_DAILY_LIMIT = "1";
 
     for (let i = 0; i < 5; i++) {
-      expect(await checkAiRateLimit("anyone")).toEqual({ allowed: true, remaining: null });
+      expect(await checkAiRateLimit("anyone")).toEqual({
+        allowed: true,
+        remaining: null,
+      });
     }
   });
 
@@ -68,14 +86,23 @@ describe("checkAiRateLimit", () => {
     process.env.UPSTASH_REDIS_REST_TOKEN = "not-a-real-token";
     process.env.AI_DAILY_LIMIT = "1";
 
-    expect(await checkAiRateLimit("anyone")).toEqual({ allowed: true, remaining: null });
-    expect(await checkAiRateLimit("anyone")).toEqual({ allowed: true, remaining: null });
+    expect(await checkAiRateLimit("anyone")).toEqual({
+      allowed: true,
+      remaining: null,
+    });
+    expect(await checkAiRateLimit("anyone")).toEqual({
+      allowed: true,
+      remaining: null,
+    });
   });
 
   it("fails open when Upstash rejects the credentials", async () => {
     process.env.UPSTASH_REDIS_REST_TOKEN = "wrong-token";
     process.env.AI_DAILY_LIMIT = "1";
 
-    expect(await checkAiRateLimit(`test-${crypto.randomUUID()}`)).toEqual({ allowed: true, remaining: null });
+    expect(await checkAiRateLimit(`test-${crypto.randomUUID()}`)).toEqual({
+      allowed: true,
+      remaining: null,
+    });
   });
 });

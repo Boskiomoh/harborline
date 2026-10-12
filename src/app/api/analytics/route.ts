@@ -1,14 +1,20 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { analyticsDataSchema } from "@/lib/api/schemas";
-import { requireApiRole } from "@/lib/api/guard";
 import { getAnalytics } from "@/lib/analytics";
+import { apiError, requireApiRole } from "@/lib/api/guard";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: NextRequest) {
+// Get the admin analytics for the last `days` days (default 30)
+export async function GET(req: NextRequest) {
   const auth = await requireApiRole(["admin"]);
   if ("response" in auth) return auth.response;
 
-  const days = Number(request.nextUrl.searchParams.get("days") ?? "30") || 30;
-  const data = await getAnalytics(days);
-  return NextResponse.json(analyticsDataSchema.parse(data));
+  const days = Number(req.nextUrl.searchParams.get("days") ?? "30") || 30;
+
+  try {
+    const data = await getAnalytics(days);
+
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("[analytics] get:", error);
+    return apiError(500, { error: "generic" });
+  }
 }

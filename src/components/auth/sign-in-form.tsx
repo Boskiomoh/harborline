@@ -1,17 +1,30 @@
 "use client";
 
-import { useActionState } from "react";
-import { useTranslations } from "next-intl";
-import { Field, inputClass } from "@/components/ui/field";
 import { buttonClass } from "@/components/ui/button";
+import { Field, inputClass } from "@/components/ui/field";
 import { signIn, type SignInState } from "@/lib/actions/auth";
+import { useTranslations } from "next-intl";
+import { FC, useActionState } from "react";
 
-export function SignInForm({ next, initialError }: { next: string; initialError?: "invalid" | "generic" }) {
+interface SignInFormProps {
+  next: string;
+  initialError?: "invalid" | "generic";
+}
+
+const SignInForm: FC<SignInFormProps> = ({ next, initialError }) => {
   const t = useTranslations("signIn");
-  const [state, action, pending] = useActionState<SignInState, FormData>(signIn, initialError ? { error: initialError } : undefined);
 
+  // Form
+  const [state, action, pending] = useActionState<SignInState, FormData>(
+    signIn,
+    initialError ? { error: initialError } : undefined,
+  );
+
+  // Derived
   const emailError = state?.fieldErrors?.email ? t("errors.email") : undefined;
-  const passwordError = state?.fieldErrors?.password ? t("errors.password") : undefined;
+  const passwordError = state?.fieldErrors?.password
+    ? t("errors.password")
+    : undefined;
 
   return (
     <form action={action} noValidate className="grid gap-4">
@@ -45,14 +58,28 @@ export function SignInForm({ next, initialError }: { next: string; initialError?
       </Field>
 
       {state?.error && (
-        <p role="alert" className="rounded-[8px] border border-danger/25 bg-danger/5 px-3.5 py-2.5 text-sm text-danger">
+        <p
+          role="alert"
+          className="rounded-[8px] border border-danger/25 bg-danger/5 px-3.5 py-2.5 text-sm text-danger"
+        >
           {t(`errors.${state.error}`)}
         </p>
       )}
 
-      <button type="submit" disabled={pending} aria-busy={pending || undefined} className={buttonClass({ variant: "secondary", size: "lg", className: "w-full" })}>
+      <button
+        type="submit"
+        disabled={pending}
+        aria-busy={pending || undefined}
+        className={buttonClass({
+          variant: "secondary",
+          size: "lg",
+          className: "w-full",
+        })}
+      >
         {pending ? t("submitting") : t("submit")}
       </button>
     </form>
   );
-}
+};
+
+export default SignInForm;

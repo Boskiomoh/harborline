@@ -5,7 +5,9 @@ import type { Database } from "./database.types";
 const PROTECTED_PREFIXES = ["/portal", "/inbox", "/analytics"];
 
 function isProtected(pathname: string) {
-  return PROTECTED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  return PROTECTED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
 }
 
 export async function updateSession(request: NextRequest) {
@@ -20,10 +22,16 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet, headers) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value),
+          );
           supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options));
-          Object.entries(headers).forEach(([key, value]) => supabaseResponse.headers.set(key, value));
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options),
+          );
+          Object.entries(headers).forEach(([key, value]) =>
+            supabaseResponse.headers.set(key, value),
+          );
         },
       },
     },
@@ -40,7 +48,9 @@ export async function updateSession(request: NextRequest) {
     url.searchParams.set("next", request.nextUrl.pathname);
 
     const redirect = NextResponse.redirect(url);
-    supabaseResponse.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+    supabaseResponse.cookies
+      .getAll()
+      .forEach((cookie) => redirect.cookies.set(cookie));
     return redirect;
   }
 

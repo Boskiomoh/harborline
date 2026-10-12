@@ -19,7 +19,7 @@ Sign in with any of the three quick-login buttons on the sign-in page, or use th
 - **Customer portal** — multi-step ticket wizard, ticket list with status filters, threaded replies, direct-to-storage file attachments.
 - **Agent inbox** — full ticket queue, internal notes (hidden from customers), status/priority/assignment management, canned responses.
 - **Admin analytics** — SLA compliance charts, response-time breakdowns by priority and category, ticket volume over time.
-- **Live updates** — new messages, status changes, and assignments appear in real time across open sessions via Supabase Realtime, patched directly into the client cache (no polling, no extra fetches).
+- **Live updates** — new messages, status changes, and assignments appear in real time across open sessions: Supabase Realtime announces the change and the affected ticket or inbox list is refetched through the same RLS-scoped route handlers (no polling).
 - **Server-rendered by default** — every page prefetches its data on the server and hydrates a TanStack Query cache, so there's no client-side fetch on first paint.
 - **Row-level security throughout** — every table and storage bucket is RLS-enforced, tested directly against the API (not just hidden in the UI): a customer gets a 403 from staff-only routes and a plain 404 (never a permission leak) for another customer's ticket.
 
@@ -36,21 +36,22 @@ The demo logins above are public, so the app assumes every visitor may try to br
 
 ## Tech stack
 
-- [Next.js 16](https://nextjs.org) (App Router, Turbopack) + React 19 + TypeScript
+- [Next.js 16](https://nextjs.org) (App Router, Turbopack, React Compiler) + React 19 + TypeScript
 - [Supabase](https://supabase.com) (Postgres, Auth, Realtime, Storage, RLS)
-- [TanStack Query](https://tanstack.com/query) with a Zod-validated `/api` layer and session-persisted caching
+- [TanStack Query](https://tanstack.com/query) over a thin `/api` layer with Zod-validated request bodies and session-persisted caching
 - Tailwind CSS v4, [next-intl](https://next-intl.dev) (English content, i18n-ready), Recharts, Zod, react-hook-form
 
 ## Architecture
 
 - `src/app` — routes: `/`, `/sign-in`, `/portal/*` (customer), `/inbox/*` (agent/admin), `/analytics` (admin), `/api/*` (REST-ish route handlers backing the query layer)
-- `src/lib/api` — Zod schemas, typed fetch client, and role-guards shared by every route handler
-- `src/lib/query` — the TanStack Query client setup, key factory, and browser-side persister
-- `src/lib/queries` — query/mutation hooks per domain (tickets, inbox, analytics), including the cache-patch helpers shared between mutations and Realtime subscriptions
+- `src/lib/api` — request-body Zod schemas, the `apiInstance` fetch client, and role-guards shared by every route handler
+- `src/lib/query` — the TanStack Query client setup and browser-side persister
+- `src/hooks/use-app-hooks` — query hooks per domain (tickets, inbox, analytics, AI); mutations live inline in the component that triggers them and refetch the affected queries on success
+- `src/hooks/use-live-ticket.ts` — the Supabase Realtime subscription that refetches a ticket when it changes
 - `src/lib/supabase` — server/browser Supabase clients
 - `supabase/migrations` — the full schema: tables, RLS policies, triggers, the `admin_analytics()` RPC, and the reseedable demo fixture
 
-See [`docs/HANDOFF.md`](docs/HANDOFF.md) for a detailed build log, schema reference, and list of known gaps.
+See [`docs/HANDOFF.md`](docs/HANDOFF.md) for the decisions behind the build, the schema, the architecture and the known gaps. [`docs/AI-ASSIST.md`](docs/AI-ASSIST.md) explains the AI layer.
 
 ## Running locally
 
